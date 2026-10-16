@@ -98,3 +98,59 @@ test("version 1 imports add meetings and assign fresh IDs", async () => {
   assert.notEqual(imported.meetings[0].items[0].id, backup.meetings[0].items[0].id);
   window.close();
 });
+
+test("attendance can be edited, saved, printed in minutes, imported and removed", async () => {
+  const window = openApp();
+  click(window, '[data-tab="attendance"]');
+  click(window, "#add-attendee");
+  input(window, '[data-attendance-key="name"]', "Jesse Dudgeon");
+  input(window, '[data-attendance-key="role"]', "Network Manager");
+  input(window, '[data-attendance-key="status"]', "Present");
+  input(window, '[data-attendance-key="notes"]', "Joined at 9:05");
+  assert.ok(window.document.getElementById("attendance-summary").textContent.includes("1 present"));
+  const backup = saved(window);
+  const reopened = openApp(backup);
+  assert.deepEqual(saved(reopened), backup);
+  click(reopened, '[data-tab="minutes"]');
+  const minutes = reopened.document.getElementById("minutesbody").textContent;
+  assert.ok(minutes.includes("PRESENT (1)"));
+  assert.ok(minutes.includes("Jesse Dudgeon — Network Manager | Joined at 9:05"));
+  const upload = reopened.document.getElementById("file");
+  Object.defineProperty(upload, "files", {
+    value: [{ size: 100, text: async () => JSON.stringify(backup) }],
+  });
+  await upload.onchange({ target: upload });
+  assert.equal(saved(reopened).meetings[0].attendance[0].name, "Jesse Dudgeon");
+  assert.notEqual(
+    saved(reopened).meetings[0].attendance[0].id,
+    backup.meetings[0].attendance[0].id,
+  );
+  click(reopened, '[data-tab="attendance"]');
+  click(reopened, "[data-remove-attendee]");
+  assert.equal(saved(reopened).meetings[0].attendance.length, 0);
+  window.close();
+  reopened.close();
+});
+
+test("legacy attendee lists migrate once without assuming presence or losing names", () => {
+  const seed = openApp();
+  const legacy = saved(seed);
+  seed.close();
+  delete legacy.meetings[0].attendance;
+  legacy.meetings[0].attendees = "Jesse\nNatalie";
+  const window = openApp(legacy);
+  assert.deepEqual(
+    saved(window).meetings[0].attendance.map((person) => person.name),
+    ["Jesse", "Natalie"],
+  );
+  assert.ok(
+    saved(window).meetings[0].attendance.every((person) => person.status === "Not recorded"),
+  );
+  click(window, '[data-tab="attendance"]');
+  click(window, "[data-remove-attendee]");
+  click(window, "[data-remove-attendee]");
+  const reopened = openApp(saved(window));
+  assert.equal(saved(reopened).meetings[0].attendance.length, 0);
+  window.close();
+  reopened.close();
+});
