@@ -1,0 +1,205 @@
+/* Brand colors and app-specific behavior. Bootstrap supplies standard controls. */
+:root {
+  --desk-green: #16685e;
+  --desk-soft: #e5f1eb;
+}
+body {
+  background: #f3f6f5;
+  color: #182f39;
+}
+header {
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+main {
+  max-width: 1450px;
+}
+.brand {
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+}
+.brand span {
+  background: var(--desk-green);
+  color: white;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.5rem;
+  margin-right: 0.6rem;
+}
+.eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #687a82;
+}
+h1 {
+  font-size: 1.9rem;
+  letter-spacing: -0.03em;
+  margin: 0.25rem 0;
+  overflow-wrap: anywhere;
+}
+h2 {
+  font-size: 1.3rem;
+}
+h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+.btn-primary {
+  --bs-btn-bg: #16685e;
+  --bs-btn-border-color: #16685e;
+  --bs-btn-hover-bg: #10564d;
+  --bs-btn-hover-border-color: #10564d;
+  --bs-btn-active-bg: #10564d;
+  --bs-btn-active-border-color: #10564d;
+}
+.nav-link {
+  color: var(--desk-green);
+}
+.meetingpick {
+  max-width: 270px;
+}
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.topic {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  display: flex;
+  background: white;
+}
+.topic.active {
+  background: var(--desk-soft);
+  border-color: #5e9e8e;
+}
+.topic.over {
+  outline: 3px solid var(--desk-green);
+}
+.grip {
+  padding: 1rem 0.5rem;
+  cursor: grab;
+  color: #687a82;
+  user-select: none;
+}
+.topicmain {
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0.75rem 0.25rem;
+}
+.topicmain strong {
+  display: block;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.topicmain small {
+  display: block;
+  color: #687a82;
+  margin-top: 0.4rem;
+}
+.move {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.25rem;
+}
+.move button {
+  padding: 0 0.4rem;
+  border: 0;
+}
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #53656e;
+}
+.form-label .form-control,
+.form-label .form-select {
+  margin-top: 0.4rem;
+  font-weight: 400;
+}
+textarea.form-control {
+  min-height: 110px;
+  resize: vertical;
+}
+textarea.discussion-notes {
+  min-height: 220px;
+}
+.row > .form-label {
+  width: 50% !important;
+}
+.recordtop > input[type="text"] {
+  flex: 1;
+  min-width: 150px;
+}
+.recordtop .form-check-input {
+  flex-shrink: 0;
+}
+.record .row {
+  margin-top: 0.25rem;
+}
+section + section {
+  margin-top: 1.5rem;
+}
+#save {
+  font-size: 0.8rem;
+  color: var(--desk-green);
+}
+#notice {
+  background: #fff2cf;
+  padding: 0.75rem 1.5rem;
+  display: none;
+}
+dialog {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.9rem;
+  padding: 1.6rem;
+  max-width: 560px;
+  width: 90%;
+}
+dialog::backdrop {
+  background: #102e3655;
+}
+.minutes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 1rem/1.7 system-ui;
+}
+#printout {
+  display: none;
+}
+@media (max-width: 575px) {
+  header {
+    padding: 1rem;
+  }
+  .row > .form-label {
+    width: 100% !important;
+  }
+  .agenda {
+    max-height: 320px;
+    overflow: auto;
+  }
+}
+@media print {
+  body > * {
+    display: none !important;
+  }
+  #printout {
+    display: block !important;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 12pt/1.5 Georgia;
+    color: black;
+  }
+  @page {
+    margin: 20mm;
+  }
+}
