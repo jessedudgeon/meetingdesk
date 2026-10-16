@@ -1,0 +1,16 @@
+{
+  "name": "meeting-desk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A static Bootstrap meeting workspace",
+  "scripts": {
+    "test": "node --test tests/meeting-desk.test.cjs",
+    "check": "node --check assets/js/meeting-desk.js"
+  },
+  "devDependencies": {
+    "jsdom": "30.1.3"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

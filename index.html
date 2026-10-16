@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Meeting Desk · Dudgeon</title>
+    <!-- Bootstrap handles layout, controls, and responsive utilities. -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="assets/css/meeting-desk.css" />
+  </head>
+  <body>
+    <header class="bg-white border-bottom">
+      <div>
+        <div class="brand">
+          <span>≋</span>
+          Meeting Desk
+        </div>
+        <div class="eyebrow" style="margin-top: 7px">Dudgeon · Meeting workspace</div>
+      </div>
+      <div class="toolbar d-flex flex-wrap align-items-center gap-2">
+        <span id="save" role="status">Saved in this browser</span>
+        <button id="import" class="btn btn-outline-secondary">Import</button>
+        <button id="export" class="btn btn-outline-secondary">Export backup</button>
+        <button id="help" class="btn btn-outline-secondary">Hosting & help</button>
+      </div>
+    </header>
+    <div id="notice" role="alert"></div>
+    <main class="container-fluid py-4 px-3 px-lg-4">
+      <div class="heading d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+          <div class="eyebrow">A place for every conversation</div>
+          <h1 id="meetingheading"></h1>
+          <p id="meetingmeta"></p>
+        </div>
+        <div class="toolbar d-flex flex-wrap align-items-center gap-2">
+          <select
+            id="meetingpick"
+            class="form-select meetingpick"
+            aria-label="Choose meeting"
+          ></select>
+          <button class="btn btn-primary" id="newmeeting">+ New meeting</button>
+        </div>
+      </div>
+      <div class="row g-4">
+        <aside class="col-12 col-lg-4 col-xl-3">
+          <div class="card border-0 shadow-sm p-3 p-lg-4">
+            <div
+              class="sectionhead d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"
+            >
+              <h3>Agenda</h3>
+              <span id="count" class="badge rounded-pill text-bg-light"></span>
+            </div>
+            <p class="small text-body-secondary">Drag a handle to reorder, or use the arrows.</p>
+            <div id="agenda" class="agenda"></div>
+            <button class="btn btn-outline-secondary w-100" id="addtopic">+ Add agenda item</button>
+            <div id="stats" class="small text-body-secondary mt-3"></div>
+          </div>
+        </aside>
+        <div class="col-12 col-lg-8 col-xl-9">
+          <div class="card border-0 shadow-sm p-3 p-lg-4">
+            <nav class="nav nav-tabs gap-2 mb-4" aria-label="Meeting views">
+              <button data-tab="workspace" class="nav-link active">Workspace</button>
+              <button data-tab="setup" class="nav-link">Meeting setup</button>
+              <button data-tab="minutes" class="nav-link">Review minutes</button>
+            </nav>
+            <div id="content"></div>
+          </div>
+        </div>
+      </div>
+      <p class="small text-body-secondary" style="margin-top: 22px">
+        Your notes stay in this browser. Export a backup to keep a separate copy or move to another
+        device.
+      </p>
+    </main>
+    <input id="file" type="file" accept=".json,application/json" hidden />
+    <dialog id="helpdialog">
+      <h2>Your meeting workspace</h2>
+      <p>
+        Use New meeting to create a meeting, then add topics to the agenda. Each topic keeps its own
+        preparation, notes, decisions, motions, and action items. Reorder with the drag handle or
+        arrow buttons.
+      </p>
+      <p style="margin-top: 16px">
+        <b>Host on dudgeon.io:</b>
+        upload
+        <code>index.html</code>
+        and the
+        <code>assets</code>
+        folder together. The repository’s
+        <code>CNAME</code>
+        points to
+        <code>minutes.dudgeon.io</code>
+        . No build or server database is required. Bootstrap CSS loads from jsDelivr.
+      </p>
+      <p style="margin-top: 16px">
+        <b>Storage:</b>
+        data is saved in this browser on this website. It does not sync across browsers or users.
+        Clearing site data removes saved meetings. Export backups regularly. Import adds meetings
+        without replacing existing ones.
+      </p>
+      <p style="margin-top: 16px">
+        Review minutes includes proceedings and action items; preparation notes are excluded. Use
+        Print / PDF to save a formatted copy.
+      </p>
+      <button style="margin-top: 20px" id="closehelp" class="btn btn-outline-secondary">
+        Close
+      </button>
+    </dialog>
+    <div id="printout"></div>
+    <script src="assets/js/meeting-desk.js" defer></script>
+  </body>
+</html>
