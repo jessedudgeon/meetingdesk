@@ -41,3 +41,9 @@ Use two-space indentation and descriptive function names. The JavaScript is orga
 ## Validation
 
 With Node.js 22.13 or newer, run `npm ci`, `npm test`, and `npm run check`. The development-only tests use jsdom to exercise form events, reorder behavior, saved-data reload, backup imports, and minutes generation. They do not replace visual browser testing.
+
+## Attendance
+
+The Attendance tab tracks each person's name, role or department, status, and attendance notes. Statuses are Not recorded, Present, Absent, Excused, and Tentative. Totals update as you mark attendance. Minutes group the roster by status and include attendance notes.
+
+Existing free-text attendee lists migrate to roster entries, one per line, with a Not recorded status. New backups retain the roster using the existing version 1 format. Importing or duplicating a meeting copies its attendance as well; review statuses when reusing a meeting for a new date.

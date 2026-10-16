@@ -38,8 +38,11 @@ const createMeeting = () => ({
   time: "09:00",
   location: "",
   attendees: "",
+  attendance: [],
   items: [],
 });
+const ATTENDANCE_STATUSES = ["Not recorded", "Present", "Absent", "Excused", "Tentative"];
+
 let state = {
   meetings: [],
   selected: null,
@@ -90,6 +93,7 @@ function validateBackup(backup, preserveIds = false) {
       time: readText(meeting.time),
       location: readText(meeting.location),
       attendees: readText(meeting.attendees),
+      attendance: validateAttendance(meeting, restoreId, readText),
       items: meeting.items.map((agendaItem) => {
         if (!agendaItem || !Array.isArray(agendaItem.records) || agendaItem.records.length > 5000) {
           throw Error("Invalid agenda data.");
@@ -129,6 +133,30 @@ function validateBackup(backup, preserveIds = false) {
     };
   });
 }
+// Older backups used a free-text attendee list. Preserve those names without assuming presence.
+function validateAttendance(meeting, restoreId, readText) {
+  if (meeting.attendance === undefined) {
+    return readText(meeting.attendees)
+      .split(/\r?\n/)
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .map((name) => ({ id: restoreId(null), name, role: "", status: "Not recorded", notes: "" }));
+  }
+  if (!Array.isArray(meeting.attendance) || meeting.attendance.length > 1000) {
+    throw Error("Invalid attendance roster.");
+  }
+  return meeting.attendance.map((person) => {
+    if (!person || typeof person !== "object") throw Error("Invalid attendee.");
+    return {
+      id: restoreId(person.id),
+      name: readText(person.name),
+      role: readText(person.role),
+      status: ATTENDANCE_STATUSES.includes(person.status) ? person.status : "Not recorded",
+      notes: readText(person.notes),
+    };
+  });
+}
+
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -288,6 +316,9 @@ function renderCurrentView() {
   if (activeTab === "setup") {
     return renderMeetingSetup();
   }
+  if (activeTab === "attendance") {
+    return renderAttendance();
+  }
   if (activeTab === "minutes") {
     return renderMinutesView();
   }
@@ -302,15 +333,7 @@ function renderMeetingSetup() {
   ${renderInput("Meeting title", "title", meeting.title, "text", "meeting")}
   <div class="row g-3">${renderInput("Date", "date", meeting.date, "date", "meeting")}${renderInput("Time", "time", meeting.time, "time", "meeting")}</div>
   ${renderInput("Location / meeting link", "location", meeting.location, "text", "meeting")}
-  <label class="form-label w-100">
-    Attendees
-    <textarea
-      data-scope="meeting"
-      data-key="attendees"
-      placeholder="Names, one per line"
-      class="form-control"
-    >${escapeHtml(meeting.attendees)}</textarea>
-  </label>
+  <p class="text-body-secondary">Manage the roster and mark who attended in the Attendance tab.</p>
   <div class="d-flex justify-content-between gap-2 mt-4">
     <button id="duplicate" class="btn btn-outline-secondary">Duplicate meeting</button>
     <button id="deletemeeting" class="btn btn-outline-danger">Delete meeting</button>
@@ -318,6 +341,83 @@ function renderMeetingSetup() {
 </section>`;
   return;
 }
+// Attendance is meeting-wide and independent of the currently selected agenda item.
+function renderAttendance() {
+  const meeting = getCurrentMeeting();
+  getElement("content").innerHTML = `
+    <section>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h2>Attendance</h2>
+          <p class="text-body-secondary mb-0">Keep the roster and record who attended this meeting.</p>
+        </div>
+        <button id="add-attendee" class="btn btn-primary">+ Add person</button>
+      </div>
+      <p id="attendance-summary" class="small text-body-secondary" role="status"></p>
+      <div class="vstack gap-3">
+        ${
+          meeting.attendance.length
+            ? meeting.attendance
+                .map(
+                  (person, index) => `
+          <div class="border rounded-3 p-3" data-attendee="${person.id}">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h3>Person ${index + 1}</h3>
+              <button class="btn btn-sm btn-outline-danger" data-remove-attendee="${person.id}" aria-label="Remove person ${index + 1}">Remove</button>
+            </div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6"><label class="form-label w-100">Name
+                <input class="form-control" data-attendance-key="name" value="${escapeHtml(person.name)}" placeholder="Full name">
+              </label></div>
+              <div class="col-12 col-md-6"><label class="form-label w-100">Role / department
+                <input class="form-control" data-attendance-key="role" value="${escapeHtml(person.role)}" placeholder="Optional">
+              </label></div>
+              <div class="col-12 col-md-6"><label class="form-label w-100">Attendance status
+                <select class="form-select" data-attendance-key="status">
+                  ${ATTENDANCE_STATUSES.map((status) => `<option ${status === person.status ? "selected" : ""}>${status}</option>`).join("")}
+                </select>
+              </label></div>
+              <div class="col-12 col-md-6"><label class="form-label w-100">Attendance notes
+                <input class="form-control" data-attendance-key="notes" value="${escapeHtml(person.notes)}" placeholder="Late arrival, early departure, or other details">
+              </label></div>
+            </div>
+          </div>`,
+                )
+                .join("")
+            : '<p class="border rounded-3 p-4 text-center text-body-secondary">No one is on the roster yet. Add a person to start tracking attendance.</p>'
+        }
+      </div>
+      <p class="small text-body-secondary mt-3 mb-0">Attendance and attendance notes are included in the meeting minutes.</p>
+    </section>`;
+  renderAttendanceSummary();
+}
+
+function renderAttendanceSummary() {
+  const people = getCurrentMeeting().attendance;
+  getElement("attendance-summary").textContent =
+    `${people.length} on roster · ` +
+    ATTENDANCE_STATUSES.map(
+      (status) =>
+        `${people.filter((person) => person.status === status).length} ${status.toLowerCase()}`,
+    ).join(" · ");
+}
+
+function buildAttendanceText(meeting) {
+  if (!meeting.attendance.length) return "No attendance recorded.";
+  return ATTENDANCE_STATUSES.flatMap((status) => {
+    const people = meeting.attendance.filter((person) => person.status === status);
+    if (!people.length) return [];
+    return [
+      `${status.toUpperCase()} (${people.length})`,
+      ...people.map(
+        (person) =>
+          `- ${person.name.trim() || "Unnamed person"}${person.role ? " — " + person.role : ""}${person.notes ? " | " + person.notes : ""}`,
+      ),
+      "",
+    ];
+  }).join("\n");
+}
+
 // Review and export the meeting proceedings.
 function renderMinutesView() {
   getElement("content").innerHTML =
@@ -464,8 +564,8 @@ function buildMinutesText() {
     meeting.title || "Untitled meeting",
     [meeting.date, meeting.time, meeting.location].filter(Boolean).join(" · "),
     "",
-    "ATTENDEES",
-    meeting.attendees || "Not recorded",
+    "ATTENDANCE",
+    buildAttendanceText(meeting),
     "",
   ];
   meeting.items.forEach((agendaItem, i) => {
@@ -509,6 +609,15 @@ function moveAgendaItem(id, targetIndex) {
 }
 getElement("content").addEventListener("input", (event) => {
   let control = event.target;
+  if (control.dataset.attendanceKey) {
+    const person = getCurrentMeeting().attendance.find(
+      (person) => person.id === control.closest("[data-attendee]").dataset.attendee,
+    );
+    person[control.dataset.attendanceKey] = control.value;
+    saveMeetings();
+    renderAttendanceSummary();
+    return;
+  }
   if (control.dataset.scope) {
     let targetRecord =
       control.dataset.scope === "meeting" ? getCurrentMeeting() : getCurrentAgendaItem();
@@ -530,6 +639,31 @@ getElement("content").addEventListener("input", (event) => {
 document.addEventListener("click", (event) => {
   let button = event.target.closest("button");
   if (!button) {
+    return;
+  }
+  if (button.id === "add-attendee") {
+    getCurrentMeeting().attendance.push({
+      id: createId(),
+      name: "",
+      role: "",
+      status: "Not recorded",
+      notes: "",
+    });
+    saveMeetings();
+    renderAttendance();
+    getElement("content")
+      .querySelector("[data-attendee]:last-child [data-attendance-key=name]")
+      .focus();
+    return;
+  }
+  if (button.dataset.removeAttendee) {
+    if (confirm("Remove this person from this meeting's attendance roster?")) {
+      getCurrentMeeting().attendance = getCurrentMeeting().attendance.filter(
+        (person) => person.id !== button.dataset.removeAttendee,
+      );
+      saveMeetings();
+      renderAttendance();
+    }
     return;
   }
   if (button.dataset.tab) {
