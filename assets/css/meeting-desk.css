@@ -15,7 +15,7 @@ header {
   gap: 1rem;
   flex-wrap: wrap;
 }
-main {
+#main-content {
   max-width: 1450px;
 }
 .brand {
@@ -266,7 +266,7 @@ body {
   padding: 20px 32px;
   min-height: 76px;
 }
-main {
+#main-content {
   margin-left: 230px;
   width: calc(100% - 230px) !important;
   max-width: none;
@@ -525,7 +525,7 @@ textarea.discussion-notes {
   outline-offset: 3px;
 }
 @media (min-width: 1500px) {
-  main {
+  #main-content {
     padding-left: 48px !important;
     padding-right: 48px !important;
   }
@@ -539,11 +539,11 @@ textarea.discussion-notes {
     padding: 24px 15px;
   }
   .app-topbar,
-  main,
+  #main-content,
   #notice {
     margin-left: 195px;
   }
-  main {
+  #main-content {
     width: calc(100% - 195px) !important;
   }
   .brand {
@@ -583,11 +583,11 @@ textarea.discussion-notes {
     font-size: 11px;
   }
   .app-topbar,
-  main,
+  #main-content,
   #notice {
     margin-left: 0;
   }
-  main {
+  #main-content {
     width: 100% !important;
   }
   .app-topbar {
