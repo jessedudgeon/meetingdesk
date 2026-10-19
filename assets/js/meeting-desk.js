@@ -320,7 +320,7 @@ function renderCurrentView() {
   }
   renderAgenda();
   document
-    .querySelectorAll("[data-tab]")
+    .querySelectorAll(".nav-tabs [data-tab]")
     .forEach((button) => button.classList.toggle("active", button.dataset.tab === activeTab));
   if (activeTab === "history") return renderHistory();
   if (activeTab === "templates") return renderTemplates();
