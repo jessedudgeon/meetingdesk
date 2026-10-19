@@ -24,6 +24,7 @@
       </div>
       <div class="toolbar d-flex flex-wrap align-items-center gap-2">
         <span id="save" role="status">Saved in this browser</span>
+        <button id="account" class="btn btn-primary">Log in / account</button>
         <button id="import" class="btn btn-outline-secondary">Import</button>
         <button id="export" class="btn btn-outline-secondary">Export backup</button>
         <button id="help" class="btn btn-outline-secondary">Hosting & help</button>
@@ -67,6 +68,8 @@
               <button data-tab="workspace" class="nav-link active">Workspace</button>
               <button data-tab="setup" class="nav-link">Meeting setup</button>
               <button data-tab="attendance" class="nav-link">Attendance</button>
+              <button data-tab="templates" class="nav-link">Templates</button>
+              <button data-tab="history" class="nav-link">History</button>
               <button data-tab="minutes" class="nav-link">Review minutes</button>
             </nav>
             <div id="content"></div>
@@ -74,8 +77,7 @@
         </div>
       </div>
       <p class="small text-body-secondary" style="margin-top: 22px">
-        Your notes stay in this browser. Export a backup to keep a separate copy or move to another
-        device.
+        Log in to save meetings and templates to your account. Without login, notes stay in this browser. Export a backup anytime.
       </p>
     </main>
     <input id="file" type="file" accept=".json,application/json" hidden />
@@ -96,13 +98,11 @@
         <code>CNAME</code>
         points to
         <code>minutes.dudgeon.io</code>
-        . No build or server database is required. Bootstrap CSS loads from jsDelivr.
+        . No build step is required. Account storage uses Supabase; see README for initial setup. Bootstrap CSS loads from jsDelivr.
       </p>
       <p style="margin-top: 16px">
         <b>Storage:</b>
-        data is saved in this browser on this website. It does not sync across browsers or users.
-        Clearing site data removes saved meetings. Export backups regularly. Import adds meetings
-        without replacing existing ones.
+        without login, data is saved in this browser. With login, meetings and templates are saved privately to your account. Wait for “Saved to your account” before closing. Use History to find past notes and Templates to start recurring meetings. Import adds meetings without replacing existing ones.
       </p>
       <p style="margin-top: 16px">
         Review minutes includes proceedings and action items; preparation notes are excluded. Use
@@ -112,7 +112,25 @@
         Close
       </button>
     </dialog>
+    <dialog id="account-dialog">
+      <h2>Your account</h2>
+      <p id="account-status" role="status"></p>
+      <form id="login-form">
+        <label class="form-label w-100">Email<input id="account-email" type="email" autocomplete="email" class="form-control" required></label>
+        <label class="form-label w-100">Password<input id="account-password" type="password" autocomplete="current-password" minlength="8" class="form-control" required></label>
+        <button class="btn btn-primary" type="submit">Log in</button>
+        <button class="btn btn-outline-secondary" id="signup" type="button">Create account</button>
+      </form>
+      <div id="signed-in" hidden>
+        <button id="copy-browser" class="btn btn-outline-primary">Copy browser meetings to account</button>
+        <button id="retry-save" class="btn btn-outline-secondary">Retry saving</button>
+        <button id="signout" class="btn btn-outline-secondary">Log out</button>
+      </div>
+      <button id="close-account" class="btn btn-outline-secondary mt-3">Close</button>
+    </dialog>
     <div id="printout"></div>
     <script src="assets/js/meeting-desk.js" defer></script>
+    <script src="assets/js/cloud-config.js"></script>
+    <script type="module" src="assets/js/cloud-storage.js"></script>
   </body>
 </html>

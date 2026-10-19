@@ -28,9 +28,9 @@ Create multiple meetings, reorder agenda topics using drag handles or arrow butt
 
 ## Saved data and backups
 
-The original localStorage key, `dudgeon.meetingdesk.v1`, and version 1 JSON backup format are unchanged. Existing saved meetings load automatically on the same website origin. Saved IDs are preserved on reload; importing or duplicating meetings assigns fresh IDs to avoid collisions.
+The original localStorage key, `dudgeon.meetingdesk.v1`, and version 1 JSON backup compatibility are preserved. Backups now also include templates and archived status. Existing saved meetings load automatically on the same website origin. Saved IDs are preserved on reload; importing or duplicating meetings assigns fresh IDs to avoid collisions.
 
-Data stays in the current browser. This application does not provide accounts, a server database, or synchronization. Export backups before clearing browser storage or changing domains. Import adds meetings rather than replacing them. If another tab changes saved data, this tab pauses saving to avoid overwriting that work; export any local work before reloading.
+Without login, data stays in the current browser. Configure Supabase below to enable private accounts and cloud saving. Account data is kept in memory in the browser and persisted to Supabase; it is not written to the guest browser workspace. Export backups before clearing browser storage or changing domains. Import adds meetings rather than replacing them. If another tab changes saved data, this tab pauses saving to avoid overwriting that work; export any local work before reloading.
 
 ## Editing
 
@@ -47,3 +47,27 @@ With Node.js 22.13 or newer, run `npm ci`, `npm test`, and `npm run check`. The 
 The Attendance tab tracks each person's name, role or department, status, and attendance notes. Statuses are Not recorded, Present, Absent, Excused, and Tentative. Totals update as you mark attendance. Minutes group the roster by status and include attendance notes.
 
 Existing free-text attendee lists migrate to roster entries, one per line, with a Not recorded status. New backups retain the roster using the existing version 1 format. Importing or duplicating a meeting copies its attendance as well; review statuses when reusing a meeting for a new date.
+
+## Connect accounts and cloud storage (one-time setup)
+
+1. Create a project at https://supabase.com/dashboard. Use a project approved for the meeting information you plan to store.
+2. In its SQL Editor, run [`supabase/setup.sql`](supabase/setup.sql). This creates a private workspace per authenticated user, enables row-level security, and installs a revision-checked save function.
+3. Under Authentication, enable the Email provider. Set Site URL to `https://minutes.dudgeon.io` and include that URL in allowed redirect URLs. Keep email confirmation enabled. For reliable production account-confirmation email delivery, configure your own SMTP provider in Supabase. You can instead create your own confirmed user through the dashboard for initial testing and disable public signups if desired.
+4. From the project's Connect/API settings, copy the project URL and **publishable key** (a legacy `anon` key also works). Put them into [`assets/js/cloud-config.js`](assets/js/cloud-config.js). These are public browser configuration, not server secrets. Never use the `service_role` or secret key.
+5. Deploy the changed files through GitHub Pages. Choose **Log in / account**, create and confirm your account, then log in.
+6. Use **Copy browser meetings to account** to migrate existing notes explicitly. The browser originals remain untouched. This copies the current browser workspace, so do it on the device with your old notes; repeated sessions can create duplicates. You can also export and import backups.
+7. Confirm the save status says **Saved to your account**. Log in on a second device and verify meetings and templates load.
+
+Each account owns its own workspace. This release does not share meetings between users or implement simultaneous collaboration. Account content is only loaded after authentication; the database policies enforce ownership even if someone bypasses the interface. Passwords are handled by Supabase Auth, never by application storage.
+
+Cloud edits autosave after a short pause. Failed saves stay in memory; keep the page open and use Account → Retry saving or export a backup. A stale device cannot silently overwrite a newer saved workspace: it pauses on a revision conflict. Export its changes, reload, then import the backup to recover those edits as separate meetings. Cloud data is fetched at login/reload, not continuously in the background. The workspace uses one JSON document per user, with up to 500 meetings and 500 templates supported by backup validation; this is designed for personal meeting records, not an organization-wide document archive.
+
+## Templates and history
+
+Use **Templates** to add the weekly IT standup starter or save the current meeting as a template. Templates preserve agenda order, presenters, preparation, duration, location, time, and the roster. Starting a meeting resets its date, discussion notes, outcomes, item progress, and attendance statuses/notes. To edit an agenda template, start a meeting from it, change the agenda, save a new template, and delete the old template if appropriate.
+
+**History** lists all saved meetings newest first and searches their text, dates, and action items. Archive/restore is available under Meeting setup; archived meetings remain searchable and editable. Creating a new meeting never replaces an old meeting. Backups include templates as well as notes.
+
+## Cloud verification before production use
+
+Automated tests cover the local workspace and mocked cloud save/failure/conflict flows. A live Supabase project is required to verify confirmation email, login on two devices, SQL policies, and deployment settings. Test with two accounts: each must only see its own workspace. A request for the other user's row must return no rows, and writes to another user ID must fail. Verify conflicting device edits are rejected. No live project credentials are included in this repository.
