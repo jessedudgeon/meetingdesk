@@ -14,70 +14,99 @@
     <link rel="stylesheet" href="assets/css/meeting-desk.css" />
   </head>
   <body>
-    <header class="bg-white border-bottom">
+    <a class="skip-link" href="#main-content">Skip to workspace</a>
+    <aside class="app-sidebar" aria-label="Main navigation">
+      <div class="brand">
+        <span>≋</span>
+        Meeting Desk
+      </div>
+      <p class="sidebar-caption">SPACE TO THINK. TIME TO ACT.</p>
+      <nav class="app-nav" aria-label="Workspace navigation">
+        <button data-tab="dashboard">Overview</button>
+        <button data-tab="history">Meetings</button>
+        <button data-tab="actions">Action items</button>
+        <button data-tab="templates">Templates</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <p class="small text-body-secondary">
+          Your conversations,
+          <br />
+          with a clear next step.
+        </p>
+        <button id="account" class="btn btn-outline-secondary w-100">Log in / account</button>
+      </div>
+    </aside>
+    <header class="app-topbar">
       <div>
-        <div class="brand">
-          <span>≋</span>
-          Meeting Desk
-        </div>
-        <div class="eyebrow" style="margin-top: 7px">Dudgeon · Meeting workspace</div>
+        <span class="eyebrow">Dudgeon /</span>
+        <span id="view-label">Overview</span>
       </div>
       <div class="toolbar d-flex flex-wrap align-items-center gap-2">
         <span id="save" role="status">Saved in this browser</span>
-        <button id="account" class="btn btn-primary">Log in / account</button>
-        <button id="import" class="btn btn-outline-secondary">Import</button>
-        <button id="export" class="btn btn-outline-secondary">Export backup</button>
-        <button id="help" class="btn btn-outline-secondary">Hosting & help</button>
+        <button id="import" class="btn btn-sm btn-outline-secondary">Import</button>
+        <button id="export" class="btn btn-sm btn-outline-secondary">Export backup</button>
+        <button id="help" class="btn btn-sm btn-outline-secondary">Help</button>
       </div>
     </header>
     <div id="notice" role="alert"></div>
-    <main class="container-fluid py-4 px-3 px-lg-4">
-      <div class="heading d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-          <div class="eyebrow">A place for every conversation</div>
-          <h1 id="meetingheading"></h1>
-          <p id="meetingmeta"></p>
-        </div>
-        <div class="toolbar d-flex flex-wrap align-items-center gap-2">
-          <select
-            id="meetingpick"
-            class="form-select meetingpick"
-            aria-label="Choose meeting"
-          ></select>
-          <button class="btn btn-primary" id="newmeeting">+ New meeting</button>
-        </div>
-      </div>
-      <div class="row g-4">
-        <aside class="col-12 col-lg-4 col-xl-3">
-          <div class="card border-0 shadow-sm p-3 p-lg-4">
-            <div
-              class="sectionhead d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"
-            >
-              <h3>Agenda</h3>
-              <span id="count" class="badge rounded-pill text-bg-light"></span>
+    <main id="main-content" class="container-fluid py-4 px-3 px-lg-4" tabindex="-1">
+      <div id="overview-content" hidden></div>
+      <div id="meeting-shell">
+        <div class="heading d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+          <div>
+            <button data-tab="history" class="btn btn-sm btn-link px-0">← All meetings</button>
+            <div id="template-banner" class="eyebrow" hidden>
+              Editing template · changes saved automatically
             </div>
-            <p class="small text-body-secondary">Drag a handle to reorder, or use the arrows.</p>
-            <div id="agenda" class="agenda"></div>
-            <button class="btn btn-outline-secondary w-100" id="addtopic">+ Add agenda item</button>
-            <div id="stats" class="small text-body-secondary mt-3"></div>
+            <h1 id="meetingheading"></h1>
+            <p id="meetingmeta"></p>
           </div>
-        </aside>
-        <div class="col-12 col-lg-8 col-xl-9">
-          <div class="card border-0 shadow-sm p-3 p-lg-4">
-            <nav class="nav nav-tabs gap-2 mb-4" aria-label="Meeting views">
-              <button data-tab="workspace" class="nav-link active">Workspace</button>
-              <button data-tab="setup" class="nav-link">Meeting setup</button>
-              <button data-tab="attendance" class="nav-link">Attendance</button>
-              <button data-tab="templates" class="nav-link">Templates</button>
-              <button data-tab="history" class="nav-link">History</button>
-              <button data-tab="minutes" class="nav-link">Review minutes</button>
-            </nav>
-            <div id="content"></div>
+          <div class="toolbar d-flex flex-wrap align-items-center gap-2">
+            <select
+              id="meetingpick"
+              class="form-select meetingpick"
+              aria-label="Choose meeting"
+            ></select>
+            <button class="btn btn-primary" id="newmeeting">+ New meeting</button>
+          </div>
+        </div>
+        <div class="row g-4">
+          <aside id="agenda-panel" class="col-12 col-lg-4 col-xl-3">
+            <div class="card border-0 shadow-sm p-3 p-lg-4">
+              <div
+                class="sectionhead d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"
+              >
+                <h3>Agenda</h3>
+                <span id="count" class="badge rounded-pill text-bg-light"></span>
+              </div>
+              <p class="small text-body-secondary">Drag a handle to reorder, or use the arrows.</p>
+              <label class="mobile-topic form-label">
+                Current topic
+                <select id="mobile-topic" class="form-select"></select>
+              </label>
+              <div id="agenda" class="agenda"></div>
+              <button class="btn btn-outline-secondary w-100" id="addtopic">
+                + Add agenda item
+              </button>
+              <div id="stats" class="small text-body-secondary mt-3"></div>
+            </div>
+          </aside>
+          <div class="col-12 col-lg-8 col-xl-9">
+            <div class="card border-0 shadow-sm p-3 p-lg-4">
+              <nav class="nav nav-tabs gap-2 mb-4" aria-label="Meeting views">
+                <button data-tab="workspace" class="nav-link active">Workspace</button>
+                <button data-tab="setup" class="nav-link">Meeting details</button>
+                <button data-tab="attendance" class="nav-link">Attendance</button>
+                <button data-tab="minutes" class="nav-link">Review minutes</button>
+              </nav>
+              <div id="content"></div>
+            </div>
           </div>
         </div>
       </div>
-      <p class="small text-body-secondary" style="margin-top: 22px">
-        Log in to save meetings and templates to your account. Without login, notes stay in this browser. Export a backup anytime.
+      <p class="workspace-footer small text-body-secondary" style="margin-top: 22px">
+        Log in to save meetings and templates to your account. Without login, notes stay in this
+        browser. Export a backup anytime.
       </p>
     </main>
     <input id="file" type="file" accept=".json,application/json" hidden />
@@ -98,11 +127,15 @@
         <code>CNAME</code>
         points to
         <code>minutes.dudgeon.io</code>
-        . No build step is required. Account storage uses Supabase; see README for initial setup. Bootstrap CSS loads from jsDelivr.
+        . No build step is required. Account storage uses Supabase; see README for initial setup.
+        Bootstrap CSS loads from jsDelivr.
       </p>
       <p style="margin-top: 16px">
         <b>Storage:</b>
-        without login, data is saved in this browser. With login, meetings and templates are saved privately to your account. Wait for “Saved to your account” before closing. Use History to find past notes and Templates to start recurring meetings. Import adds meetings without replacing existing ones.
+        without login, data is saved in this browser. With login, meetings and templates are saved
+        privately to your account. Wait for “Saved to your account” before closing. Use History to
+        find past notes and Templates to start recurring meetings. Import adds meetings without
+        replacing existing ones.
       </p>
       <p style="margin-top: 16px">
         Review minutes includes proceedings and action items; preparation notes are excluded. Use
@@ -116,22 +149,81 @@
       <h2>Your account</h2>
       <p id="account-status" role="status"></p>
       <form id="login-form">
-        <button id="google-signin" type="button" class="btn btn-outline-primary w-100 mb-3" disabled>Continue with Google</button>
+        <button
+          id="google-signin"
+          type="button"
+          class="btn btn-outline-primary w-100 mb-3"
+          disabled
+        >
+          Continue with Google
+        </button>
         <p class="small text-body-secondary">Or use your email and password:</p>
-        <label class="form-label w-100">Email<input id="account-email" type="email" autocomplete="email" class="form-control" required></label>
-        <label class="form-label w-100">Password<input id="account-password" type="password" autocomplete="current-password" minlength="8" class="form-control" required></label>
+        <label class="form-label w-100">
+          Email
+          <input
+            id="account-email"
+            type="email"
+            autocomplete="email"
+            class="form-control"
+            required
+          />
+        </label>
+        <label class="form-label w-100">
+          Password
+          <input
+            id="account-password"
+            type="password"
+            autocomplete="current-password"
+            minlength="8"
+            class="form-control"
+            required
+          />
+        </label>
         <button class="btn btn-primary" type="submit">Log in</button>
         <button class="btn btn-outline-secondary" id="signup" type="button">Create account</button>
       </form>
       <div id="signed-in" hidden>
-        <button id="copy-browser" class="btn btn-outline-primary">Copy browser meetings to account</button>
+        <button id="copy-browser" class="btn btn-outline-primary">
+          Copy browser meetings to account
+        </button>
         <button id="retry-save" class="btn btn-outline-secondary">Retry saving</button>
         <button id="signout" class="btn btn-outline-secondary">Log out</button>
       </div>
       <button id="close-account" class="btn btn-outline-secondary mt-3">Close</button>
     </dialog>
+    <dialog id="new-meeting-dialog">
+      <form id="new-meeting-form">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2>Make room for a conversation</h2>
+          <button type="button" id="cancel-new" class="btn btn-sm btn-outline-secondary">
+            Cancel
+          </button>
+        </div>
+        <label class="form-label w-100">
+          Start with
+          <select id="new-template" class="form-select"></select>
+        </label>
+        <div id="template-preview" class="template-preview mb-3"></div>
+        <label class="form-label w-100">
+          Meeting title
+          <input
+            id="new-title"
+            class="form-control"
+            required
+            maxlength="200"
+            value="Team meeting"
+          />
+        </label>
+        <label class="form-label w-100">
+          Date
+          <input id="new-date" type="date" class="form-control" required />
+        </label>
+        <button type="submit" class="btn btn-primary w-100 mt-3">Create meeting</button>
+      </form>
+    </dialog>
     <div id="printout"></div>
     <script src="assets/js/meeting-desk.js" defer></script>
+    <script src="assets/js/workspace.js" defer></script>
     <script src="assets/js/cloud-config.js"></script>
     <script type="module" src="assets/js/cloud-storage.js"></script>
   </body>

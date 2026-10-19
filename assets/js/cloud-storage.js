@@ -64,7 +64,7 @@ async function loadAccount(nextUser) {
   if (!cloud.active) guest = desk.snapshot();
   user = nextUser; cloud.active = true; blocked = true;
   lockWorkspace(true);
-  element("account").textContent = "Account";
+  element("account").textContent = nextUser.user_metadata?.full_name || nextUser.email || "Account";
   element("login-form").hidden = true;
   element("signed-in").hidden = false;
   status("Loading your meetings…");

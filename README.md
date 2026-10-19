@@ -64,9 +64,9 @@ Cloud edits autosave after a short pause. Failed saves stay in memory; keep the 
 
 ## Templates and history
 
-Use **Templates** to add the weekly IT standup starter or save the current meeting as a template. Templates preserve agenda order, presenters, preparation, duration, location, time, and the roster. Starting a meeting resets its date, discussion notes, outcomes, item progress, and attendance statuses/notes. To edit an agenda template, start a meeting from it, change the agenda, save a new template, and delete the old template if appropriate.
+Use **Templates** to add the weekly IT standup starter or save the current meeting as a template. Templates preserve agenda order, presenters, preparation, duration, location, time, and the roster. Starting a meeting resets its date, discussion notes, outcomes, item progress, and attendance statuses/notes. Use Edit on a template card to change its title, agenda, preparation, timing, and roster directly. Changes autosave without creating a meeting.
 
-**History** lists all saved meetings newest first and searches their text, dates, and action items. Archive/restore is available under Meeting setup; archived meetings remain searchable and editable. Creating a new meeting never replaces an old meeting. Backups include templates as well as notes.
+**Meetings** lists all saved meetings newest first and searches their text, dates, and action items. Archive/restore is available under Meeting setup; archived meetings remain searchable and editable. Creating a new meeting never replaces an old meeting. Backups include templates as well as notes.
 
 ## Cloud verification before production use
 
@@ -85,3 +85,15 @@ The account dialog supports **Continue with Google** through Supabase OAuth. Ema
 The Supabase SDK processes the OAuth return and loads the same private workspace mechanism used by email login. Provider setup and a real Google login are required for end-to-end verification.
 
 Reference: https://supabase.com/docs/guides/auth/social-login/auth-google
+
+## Workspace layout
+
+The app opens on Overview, with upcoming meetings, recent notes, open actions, and overdue counts. The sidebar links to Meetings, Action items, and Templates. The account button shows the signed-in name or email; save status stays in the top bar.
+
+New meeting opens a dialog with a blank/template choice, agenda preview, title, and date. Meeting details, attendance, and printable minutes remain inside each meeting. Attendance uses a compact table and supports Mark all present. Small screens replace the agenda list with a topic selector; desktop retains drag handles and reorder arrows.
+
+Action items collects actions from every meeting, including archived meetings. Filter by owner, completion, overdue state, due date, or text. Checking an action updates the original meeting record; its source link opens that topic. Archiving a meeting does not hide unfinished commitments.
+
+Templates can be created or edited directly. Starting from a template creates fresh IDs, a new date, empty discussion/outcomes, and unrecorded attendance. Existing meetings remain independent. Print / PDF produces structured minutes with attendance and outcomes; preparation remains excluded.
+
+`assets/js/workspace.js` contains the dashboard and navigation views, using the existing data and storage pipeline. No database migration is required. Tests cover the new flows alongside legacy backups and cloud-save behavior.
