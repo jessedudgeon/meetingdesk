@@ -185,7 +185,7 @@ if (!state.meetings.length) {
   state.meetings = [meeting];
   state.selected = meeting.id;
 }
-const getCurrentMeeting = () => state.meetings.find((meeting) => meeting.id === state.selected);
+const getCurrentMeeting = () => [...state.meetings, ...state.templates].find((meeting) => meeting.id === state.selected);
 // Keep the original storage key so existing meetings survive this refactor.
 const getCurrentAgendaItem = () =>
   getCurrentMeeting().items.find((agendaItem) => agendaItem.id === selectedAgendaItemId);
