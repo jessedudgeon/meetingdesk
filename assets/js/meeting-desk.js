@@ -34,6 +34,7 @@ const createAgendaItem = (title = "New agenda item") => ({
 const createMeeting = () => ({
   id: createId(),
   title: "Untitled meeting",
+  archived: false,
   date: getToday(),
   time: "09:00",
   location: "",
@@ -46,6 +47,7 @@ const ATTENDANCE_STATUSES = ["Not recorded", "Present", "Absent", "Excused", "Te
 let state = {
   meetings: [],
   selected: null,
+  templates: [],
 };
 let selectedAgendaItemId = null;
 let activeTab = "workspace";
@@ -88,6 +90,7 @@ function validateBackup(backup, preserveIds = false) {
     return {
       ...createMeeting(),
       id: restoreId(meeting.id),
+      archived: meeting.archived === true,
       title: readText(meeting.title) || "Untitled meeting",
       date: readText(meeting.date),
       time: readText(meeting.time),
@@ -162,6 +165,7 @@ try {
   if (saved) {
     const parsed = JSON.parse(saved);
     state.meetings = validateBackup(parsed, true);
+    state.templates = validateTemplates(parsed.templates);
     state.selected = state.meetings[0]?.id;
   }
 } catch (event) {
@@ -186,6 +190,10 @@ const getCurrentMeeting = () => state.meetings.find((meeting) => meeting.id === 
 const getCurrentAgendaItem = () =>
   getCurrentMeeting().items.find((agendaItem) => agendaItem.id === selectedAgendaItemId);
 function saveMeetings() {
+  if (window.meetingCloud?.active) {
+    window.meetingCloud.save(getWorkspaceBackup());
+    return;
+  }
   if (!canSave) {
     getElement("save").textContent = "Not saved · export a backup";
     return;
@@ -196,6 +204,7 @@ function saveMeetings() {
       JSON.stringify({
         version: 1,
         meetings: state.meetings,
+        templates: state.templates,
       }),
     );
     getElement("save").textContent = "Saved in this browser";
@@ -216,7 +225,7 @@ function renderMeetingSummary() {
   getElement("meetingpick").innerHTML = state.meetings
     .map(
       (x) => `<option value="${x.id}" ${x.id === meeting.id ? "selected" : ""}>
-  ${escapeHtml(x.title || "Untitled meeting")}
+  ${escapeHtml(x.date)} · ${escapeHtml(x.title || "Untitled meeting")}${x.archived ? " (archived)" : ""}
 </option>`,
     )
     .join("");
@@ -313,6 +322,8 @@ function renderCurrentView() {
   document
     .querySelectorAll("[data-tab]")
     .forEach((button) => button.classList.toggle("active", button.dataset.tab === activeTab));
+  if (activeTab === "history") return renderHistory();
+  if (activeTab === "templates") return renderTemplates();
   if (activeTab === "setup") {
     return renderMeetingSetup();
   }
@@ -335,6 +346,8 @@ function renderMeetingSetup() {
   ${renderInput("Location / meeting link", "location", meeting.location, "text", "meeting")}
   <p class="text-body-secondary">Manage the roster and mark who attended in the Attendance tab.</p>
   <div class="d-flex justify-content-between gap-2 mt-4">
+    <button id="save-template" class="btn btn-outline-secondary">Save as template</button>
+    <button id="archive-meeting" class="btn btn-outline-secondary">${meeting.archived ? "Restore meeting" : "Archive meeting"}</button>
     <button id="duplicate" class="btn btn-outline-secondary">Duplicate meeting</button>
     <button id="deletemeeting" class="btn btn-outline-danger">Delete meeting</button>
   </div>
@@ -609,6 +622,7 @@ function moveAgendaItem(id, targetIndex) {
 }
 getElement("content").addEventListener("input", (event) => {
   let control = event.target;
+  if (control.id === "history-search") { renderHistoryResults(control.value); return; }
   if (control.dataset.attendanceKey) {
     const person = getCurrentMeeting().attendance.find(
       (person) => person.id === control.closest("[data-attendee]").dataset.attendee,
@@ -641,6 +655,7 @@ document.addEventListener("click", (event) => {
   if (!button) {
     return;
   }
+  if (handleLibraryClick(button)) return;
   if (button.id === "add-attendee") {
     getCurrentMeeting().attendance.push({
       id: createId(),
@@ -762,6 +777,7 @@ document.addEventListener("click", (event) => {
             version: 1,
             exportedAt: new Date().toISOString(),
             meetings: state.meetings,
+        templates: state.templates,
           },
           null,
           2,
@@ -806,10 +822,13 @@ getElement("file").onchange = async (event) => {
     if (backupFile.size > 10 * 1024 * 1024) {
       throw Error("Backup must be smaller than 10 MB.");
     }
-    const imported = validateBackup(JSON.parse(await backupFile.text()));
+    const parsed = JSON.parse(await backupFile.text());
+    const imported = validateBackup(parsed);
+    const templates = validateTemplates(parsed.templates, false);
     if (!imported.length) {
       throw Error("This backup contains no meetings.");
     }
+    state.templates.push(...templates);
     state.meetings.unshift(...imported);
     state.selected = imported[0].id;
     saveMeetings();
@@ -856,7 +875,7 @@ getElement("agenda").addEventListener("dragend", () => {
   document.querySelectorAll(".topic.over").forEach((x) => x.classList.remove("over"));
 });
 window.addEventListener("storage", (event) => {
-  if (event.key === STORAGE_KEY) {
+  if (event.key === STORAGE_KEY && !window.meetingCloud?.active) {
     canSave = false;
     showNotice(
       "Meeting data changed in another tab. To avoid overwriting it, saving here is paused. Export any unsaved work, then reload this page.",
@@ -866,3 +885,98 @@ window.addEventListener("storage", (event) => {
 });
 renderCurrentView();
 saveMeetings();
+
+// Account data stays in memory; signing out restores the separate browser workspace.
+function getWorkspaceBackup() {
+  return { version: 1, meetings: state.meetings, templates: state.templates };
+}
+function validateTemplates(templates = [], preserveIds = true) {
+  return validateBackup({ version: 1, meetings: templates }, preserveIds);
+}
+function replaceWorkspace(backup) {
+  const meetings = validateBackup(backup, true);
+  const templates = validateTemplates(backup.templates);
+  state = { meetings: meetings.length ? meetings : [createMeeting()], templates, selected: null };
+  state.selected = state.meetings[0].id;
+  selectedAgendaItemId = null;
+  activeTab = "history";
+  renderCurrentView();
+}
+window.meetingDesk = { snapshot: () => structuredClone(getWorkspaceBackup()), replace: replaceWorkspace,
+  notice: showNotice, validate: (data) => { validateBackup(data, true); validateTemplates(data.templates); } };
+function resetForNextMeeting(source) {
+  const meeting = validateBackup({ version: 1, meetings: [source] })[0];
+  meeting.date = getToday();
+  meeting.archived = false;
+  meeting.attendance.forEach(person => { person.status = "Not recorded"; person.notes = ""; });
+  meeting.items.forEach(item => { item.status = "Upcoming"; item.notes = ""; item.records = []; });
+  return meeting;
+}
+function renderTemplates() {
+  getElement("content").innerHTML = `<h2>Meeting templates</h2>
+    <p>Save a meeting’s agenda, preparation, time allocations, and roster. New meetings start with fresh notes and attendance.</p>
+    <button id="save-template" class="btn btn-primary mb-3">Save current meeting as template</button>
+    <button id="starter-template" class="btn btn-outline-secondary mb-3">Add weekly IT standup template</button>
+    <div class="vstack gap-3">${state.templates.map(t => `<div class="border rounded p-3">
+      <h3>${escapeHtml(t.title)}</h3><p>${t.items.length} agenda items · ${t.attendance.length} people</p>
+      <button data-use-template="${t.id}" class="btn btn-primary">Start meeting</button>
+      <button data-rename-template="${t.id}" class="btn btn-outline-secondary">Rename</button>
+      <button data-delete-template="${t.id}" class="btn btn-outline-danger">Delete</button>
+    </div>`).join("") || '<p>No templates yet.</p>'}</div>`;
+}
+function renderHistory() {
+  getElement("content").innerHTML = `<h2>Meeting history</h2>
+    <label class="form-label w-100">Search titles, dates, notes, or action items
+      <input id="history-search" class="form-control" type="search" placeholder="Find a past meeting">
+    </label><div id="history-results" class="vstack gap-3"></div>`;
+  renderHistoryResults("");
+}
+function renderHistoryResults(query) {
+  const meetings = [...state.meetings].sort((a,b) => b.date.localeCompare(a.date))
+    .filter(m => JSON.stringify(m).toLowerCase().includes(query.toLowerCase()));
+  getElement("history-results").innerHTML = meetings.map(m => `<div class="border rounded p-3">
+    <h3>${escapeHtml(m.title)}</h3><p>${escapeHtml(m.date)} · ${m.items.length} topics${m.archived ? " · Archived" : ""}</p>
+    <button data-open-meeting="${m.id}" class="btn btn-outline-primary">Open meeting</button>
+  </div>`).join("") || '<p>No matching meetings.</p>';
+}
+function handleLibraryClick(button) {
+  if (button.dataset.openMeeting) {
+    state.selected = button.dataset.openMeeting; activeTab = "minutes"; renderCurrentView(); return true;
+  }
+  if (button.id === "archive-meeting") {
+    getCurrentMeeting().archived = !getCurrentMeeting().archived;
+    saveMeetings(); renderCurrentView(); return true;
+  }
+  if (button.id === "save-template") {
+    const name = prompt("Template name", getCurrentMeeting().title);
+    if (name?.trim()) {
+      const template = resetForNextMeeting(getCurrentMeeting()); template.title = name.trim();
+      state.templates.push(template); saveMeetings(); activeTab = "templates"; renderCurrentView();
+    }
+    return true;
+  }
+  if (button.id === "starter-template") {
+    const template = createMeeting(); template.title = "Weekly IT standup";
+    template.items = ["Wins and completed work", "Service issues and outages", "Project and security updates", "Blockers and support needed", "Owners, outcomes, and next steps"].map(title => createAgendaItem(title));
+    state.templates.push(template); saveMeetings(); renderTemplates(); return true;
+  }
+  if (button.dataset.useTemplate) {
+    const meeting = resetForNextMeeting(state.templates.find(t => t.id === button.dataset.useTemplate));
+    state.meetings.unshift(meeting); state.selected = meeting.id; activeTab = "setup";
+    saveMeetings(); renderCurrentView(); return true;
+  }
+  if (button.dataset.renameTemplate) {
+    const template = state.templates.find(t => t.id === button.dataset.renameTemplate);
+    const name = prompt("Template name", template.title);
+    if (name?.trim()) { template.title = name.trim(); saveMeetings(); renderTemplates(); }
+    return true;
+  }
+  if (button.dataset.deleteTemplate) {
+    if (confirm("Delete this template? Existing meetings will be kept.")) {
+      state.templates = state.templates.filter(t => t.id !== button.dataset.deleteTemplate);
+      saveMeetings(); renderTemplates();
+    }
+    return true;
+  }
+  return false;
+}
