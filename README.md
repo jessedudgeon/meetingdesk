@@ -71,3 +71,17 @@ Use **Templates** to add the weekly IT standup starter or save the current meeti
 ## Cloud verification before production use
 
 Automated tests cover the local workspace and mocked cloud save/failure/conflict flows. A live Supabase project is required to verify confirmation email, login on two devices, SQL policies, and deployment settings. Test with two accounts: each must only see its own workspace. A request for the other user's row must return no rows, and writes to another user ID must fail. Verify conflicting device edits are rejected. No live project credentials are included in this repository.
+
+## Enable Google sign-in
+
+The account dialog supports **Continue with Google** through Supabase OAuth. Email/password remains available. No Google client secret belongs in this repository.
+
+1. Open Google Cloud Console and select or create a project. Configure Google Auth Platform branding and audience for Meeting Desk. If the app is in Testing, add your Google account as a test user.
+2. Create an OAuth client of type **Web application**. Set the authorized JavaScript origin to `https://minutes.dudgeon.io` and the authorized redirect URI to `https://efehgfntchczottrmosm.supabase.co/auth/v1/callback`.
+3. In Supabase → Authentication → Sign In / Providers → Google, enable Google and enter the Google client ID and client secret. Save them in Supabase only.
+4. In Supabase → Authentication → URL Configuration, set Site URL and add an allowed redirect URL of `https://minutes.dudgeon.io/`.
+5. On the website choose Continue with Google. Complete Google's account selection and verify you return signed in, then save a meeting and reload to verify persistence.
+
+The Supabase SDK processes the OAuth return and loads the same private workspace mechanism used by email login. Provider setup and a real Google login are required for end-to-end verification.
+
+Reference: https://supabase.com/docs/guides/auth/social-login/auth-google

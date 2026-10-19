@@ -99,6 +99,22 @@ async function authenticate(signup) {
 }
 element("login-form").onsubmit = event => { event.preventDefault(); authenticate(false); };
 element("signup").onclick = () => authenticate(true);
+element("google-signin").onclick = async () => {
+  if (!client || user) return;
+  const button = element("google-signin");
+  button.disabled = true;
+  status("Opening Google sign-in…");
+  try {
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: "https://minutes.dudgeon.io/" },
+    });
+    if (error) throw error;
+  } catch (error) {
+    status("Google sign-in could not start. " + error.message);
+    button.disabled = false;
+  }
+};
 element("retry-save").onclick = () => {
   if (blocked) { status("Reload to load the account before saving. Export any unsaved work first."); return; }
   flush();
@@ -138,6 +154,7 @@ if (!config?.url || !config?.publishableKey) {
   try {
     const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.102.0/+esm");
     client = createClient(config.url, config.publishableKey);
+    element("google-signin").disabled = false;
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
     if (data.session) await loadAccount(data.session.user);
