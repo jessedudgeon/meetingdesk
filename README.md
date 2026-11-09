@@ -121,3 +121,7 @@ Schedule follow-up automatically gives the source and new meeting the same serie
 The **Series** sidebar page groups named meeting series (ignoring case and surrounding spaces). Choose a series to see meeting history, open commitments, and overdue counts. Archived meetings and their unfinished actions remain included. Open a meeting's minutes or jump to an action's original topic directly. The selection stays while navigating within the workspace and resets when accounts change.
 
 **Schedule follow-up** uses the latest dated meeting on or before today as its agenda source; when none exists, it uses the latest meeting in the series. The selected source is displayed before you start. Standalone meetings remain in Meetings and are not silently grouped by title.
+
+## Calendar
+
+Use **Calendar** for a monthly view of meeting dates and unfinished action deadlines. Select a day to open its meetings/actions or create a meeting on that date. Navigate with previous/next, Today, or the month field; filter by series and event type. Archived meetings are optional, while their unfinished action deadlines remain visible. Completed actions and invalid/undated dates are excluded. Dates use the browser's local calendar without UTC conversion. Filters and month selection remain while navigating, then reset on account changes. This is a date-based planning view, not an external calendar sync or invitation sender.

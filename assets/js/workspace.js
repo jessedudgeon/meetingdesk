@@ -7,7 +7,7 @@ let selectedSeries = "";
 const originalView = renderCurrentView,
   originalAgenda = renderAgenda;
 const originalReplace = window.meetingDesk.replace;
-const globalViews = ["dashboard", "history", "series", "actions", "templates"];
+const globalViews = ["dashboard", "history", "calendar", "series", "actions", "templates"];
 const allActions = () =>
   state.meetings.flatMap((m) =>
     m.items.flatMap((t) => t.records.filter((r) => r.type === "Action").map((r) => ({ m, t, r }))),
@@ -48,7 +48,7 @@ renderCurrentView = function () {
   getElement("overview-content").hidden = !global;
   getElement("meeting-shell").hidden = global;
   getElement("view-label").textContent =
-    { dashboard: "Overview", history: "Meetings", series: "Meeting series", actions: "Action items", templates: "Templates" }[
+    { dashboard: "Overview", history: "Meetings", calendar: "Calendar", series: "Meeting series", actions: "Action items", templates: "Templates" }[
       activeTab
     ] || (editingTemplate ? "Template editor" : "Meeting workspace");
   document.querySelectorAll(".app-nav button").forEach((b) => {
@@ -65,6 +65,7 @@ renderCurrentView = function () {
     if (activeTab === "history") return meetingLibrary();
     if (activeTab === "actions") return actionLibrary();
     if (activeTab === "series") return seriesLibrary();
+    if (activeTab === "calendar") return calendarView();
     return templateLibrary();
   }
   originalView();
@@ -80,6 +81,7 @@ renderCurrentView = function () {
 window.meetingDesk.replace = (backup) => {
   followUpId = null;
   selectedSeries = "";
+  resetCalendar();
   editingActionId = null;
   getElement("previous-minutes-panel").replaceChildren();
   getElement("action-edit-dialog").close();

@@ -21,7 +21,7 @@ function app(backup) {
     this.open = false;
   };
   if (backup) w.localStorage.setItem("dudgeon.meetingdesk.v1", JSON.stringify(backup));
-  for (const name of ["meeting-desk.js", "workspace.js"])
+  for (const name of ["meeting-desk.js", "workspace.js", "calendar.js"])
     require("node:vm").runInContext(
       readFileSync(path.join(root, "assets/js", name), "utf8"),
       dom.getInternalVMContext(),
@@ -395,5 +395,77 @@ test("series follow-up selects latest dated past agenda and keeps the chosen ser
   submit(w);
   assert.equal(data(w).meetings[0].series, "Weekly");
   assert.equal(data(w).meetings[0].items[0].title, "latest agenda");
+  w.close();
+});
+
+function change(w, selector, value) {
+  const control = w.document.querySelector(selector);
+  if (control.type === "checkbox") control.checked = value;
+  else control.value = value;
+  control.dispatchEvent(new w.Event("change", { bubbles: true }));
+}
+test("calendar handles leap years, year navigation, selected-date creation and account reset", () => {
+  const w = app();
+  click(w, '.app-nav [data-tab="calendar"]');
+  change(w, "#calendar-month", "2028-02");
+  assert.equal(w.document.querySelectorAll("[data-calendar-day]").length, 29);
+  click(w, '[data-calendar-day="2028-02-29"]');
+  click(w, "#calendar-new");
+  assert.equal(w.document.getElementById("new-date").value, "2028-02-29");
+  submit(w);
+  assert.equal(data(w).meetings[0].date, "2028-02-29");
+  click(w, '.app-nav [data-tab="calendar"]');
+  assert.match(w.document.getElementById("calendar-day-details").textContent, /Team meeting/);
+  change(w, "#calendar-month", "2027-12");
+  click(w, "#calendar-next");
+  assert.equal(w.document.getElementById("calendar-month").value, "2028-01");
+  click(w, "#calendar-prev");
+  assert.equal(w.document.getElementById("calendar-month").value, "2027-12");
+  change(w, "#calendar-month", "2027-02");
+  assert.equal(w.document.querySelectorAll("[data-calendar-day]").length, 28);
+  w.meetingDesk.replace({ version: 1, meetings: [], templates: [] });
+  click(w, '.app-nav [data-tab="calendar"]');
+  assert.notEqual(w.document.getElementById("calendar-month").value, "2027-02");
+  assert.ok(w.document.querySelector('[aria-current="date"]'));
+  w.close();
+});
+test("calendar filters meetings and deadlines, preserves archived open actions, and opens sources", () => {
+  const w = app();
+  const source = data(w).meetings[0];
+  source.id = "calendar-source";
+  source.date = "2028-02-29";
+  source.series = "IT";
+  source.archived = true;
+  source.title = "<b>Weekly meeting</b>";
+  source.items[0].records = [
+    { id: "calendar-action", type: "Action", text: "Review budget", owner: "Jesse", due: "2028-02-29", done: false },
+    { id: "calendar-done", type: "Action", text: "Finished item", due: "2028-02-29", done: true },
+    { id: "calendar-bad", type: "Action", text: "Bad date", due: "2028-02-30", done: false }
+  ];
+  const other = structuredClone(source);
+  other.id = "other-calendar";
+  other.series = "Finance";
+  other.items = [];
+  other.archived = false;
+  w.meetingDesk.replace({ version: 1, meetings: [source, other], templates: [] });
+  click(w, '.app-nav [data-tab="calendar"]');
+  change(w, "#calendar-month", "2028-02");
+  change(w, "#calendar-series", "it");
+  click(w, '[data-calendar-day="2028-02-29"]');
+  let details = w.document.getElementById("calendar-day-details");
+  assert.equal(details.querySelectorAll("[data-open-workspace]").length, 0);
+  assert.equal(details.querySelectorAll("[data-jump-action]").length, 1);
+  assert.doesNotMatch(details.textContent, /Finished item|Bad date/);
+  change(w, "#calendar-archived", true);
+  assert.equal(w.document.querySelectorAll("#calendar-day-details [data-open-workspace]").length, 1);
+  assert.equal(w.document.querySelector("#calendar-day-details b"), null);
+  change(w, "#calendar-type", "meetings");
+  assert.equal(w.document.querySelectorAll("#calendar-day-details [data-jump-action]").length, 0);
+  click(w, '#calendar-day-details [data-open-workspace]');
+  assert.equal(w.document.getElementById("meetingheading").textContent, "<b>Weekly meeting</b>");
+  click(w, '.app-nav [data-tab="calendar"]');
+  change(w, "#calendar-type", "actions");
+  click(w, '[data-jump-action="calendar-action"]');
+  assert.equal(w.document.querySelector('[data-rkey="text"]').value, "Review budget");
   w.close();
 });
