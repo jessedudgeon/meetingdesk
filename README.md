@@ -109,3 +109,9 @@ Optionally include unfinished actions as a preparation-only review topic. These 
 In **Action items**, use **Edit** to update a commitment, its owner, due date, or completion status without leaving the list. Save updates the original meeting record; Cancel discards edits. Filters remain in place, so an edited action may disappear when it no longer matches. Account changes close the editor.
 
 Search covers action text, meeting, topic, and owner. **Export filtered CSV** downloads the current matching actions in due-date order, including source meeting/topic and completion status. Notes, preparation, and attendance are excluded. Values are quoted and formula-like text is prefixed for spreadsheet safety.
+
+## Series and previous minutes
+
+Use **Meeting details → Meeting series** to group existing meetings by name (case-insensitive). In the meeting workspace, expand **Previous minutes** to read the latest earlier meeting and select older minutes without leaving current notes. Archived meetings are included; preparation notes are excluded. Earlier meetings are determined by date and start time, so both should be set correctly. Meetings at the same date/time are not treated as earlier.
+
+Schedule follow-up automatically gives the source and new meeting the same series. Starting from a template likewise retains its series, creating a unique series name when needed. This updates the source's series metadata only; discussion, attendance and actions remain unchanged. Review is read-only and reflects the saved meeting records, not an immutable approved snapshot. Prior minutes are not copied into the current meeting's exports. Series names are preserved in the existing backup and account save format; no database migration is needed. Previously created follow-ups can be grouped manually through Meeting details.

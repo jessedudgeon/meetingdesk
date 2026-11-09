@@ -162,7 +162,8 @@ test("follow-up starts fresh, keeps original commitments and excludes preparatio
   input(w, "#new-date", "2026-11-16");
   submit(w);
   const next = data(w).meetings[0];
-  assert.deepEqual(data(w).meetings[1], original);
+  assert.deepEqual(data(w).meetings[1], { ...original, series: original.title });
+  assert.equal(next.series, original.title);
   assert.notEqual(next.id, original.id);
   assert.equal(next.date, "2026-11-16");
   assert.equal(next.archived, false);
@@ -275,5 +276,71 @@ test("CSV exports only matching actions, quotes values, and neutralizes spreadsh
   assert.doesNotMatch(csv, /Finished|PRIVATE PREP|PRIVATE NOTES/);
   input(w, "#action-search", "no matches");
   assert.equal(w.document.getElementById("export-actions").disabled, true);
+  w.close();
+});
+
+
+test("series review selects the latest earlier minutes, supports history, and leaves current notes intact", () => {
+  const w = app();
+  const source = data(w).meetings[0];
+  const meeting = (id, date, series, notes, time = "09:00") => ({
+    ...structuredClone(source), id, date, time, title: id, series,
+    items: [{ ...source.items[0], id: id + "-topic", notes, prep: "PRIVATE PREPARATION", records: [] }]
+  });
+  const current = meeting("current", "2026-11-09", "IT Team", "Current draft");
+  const prior = meeting("prior", "2026-11-02", "it team", "<b>Last discussion</b>");
+  prior.archived = true;
+  w.meetingDesk.replace({ version: 1, templates: [], meetings: [
+    current, prior, meeting("older", "2026-10-26", "IT Team", "Older discussion"),
+    meeting("future", "2026-11-16", "IT Team", "Future discussion"),
+    meeting("other", "2026-11-08", "Other series", "Other discussion")
+  ] });
+  click(w, '.app-nav [data-tab="history"]');
+  click(w, '[data-open-workspace="current"]');
+  const select = w.document.getElementById("previous-minutes-select");
+  assert.equal(select.value, "prior");
+  assert.equal(select.options.length, 2);
+  assert.match(w.document.getElementById("previous-minutes-text").textContent, /Last discussion/);
+  assert.doesNotMatch(w.document.getElementById("previous-minutes-text").textContent, /PRIVATE PREPARATION/);
+  assert.equal(w.document.querySelector("#previous-minutes-text b"), null);
+  select.value = "older";
+  select.dispatchEvent(new w.Event("change", { bubbles: true }));
+  assert.match(w.document.getElementById("previous-minutes-text").textContent, /Older discussion/);
+  input(w, '[data-key="notes"]', "Current revised draft");
+  assert.equal(data(w).meetings[0].items[0].notes, "Current revised draft");
+  assert.equal(data(w).meetings[1].items[0].notes, "<b>Last discussion</b>");
+  click(w, '[data-tab="minutes"]');
+  assert.doesNotMatch(w.document.getElementById("minutesbody").textContent, /Last discussion|Older discussion/);
+  assert.match(w.document.getElementById("minutesbody").textContent, /Current revised draft/);
+  const saved = data(w);
+  const reloaded = app(saved);
+  click(reloaded, '.app-nav [data-tab="history"]');
+  click(reloaded, '[data-open-workspace="current"]');
+  assert.equal(reloaded.document.getElementById("previous-minutes-select").value, "prior");
+  w.meetingDesk.replace({ version: 1, meetings: [], templates: [] });
+  assert.equal(w.document.getElementById("previous-minutes-panel").textContent, "");
+  reloaded.close();
+  w.close();
+});
+test("existing meetings can join a series and same-day review respects start times", () => {
+  const w = app();
+  const source = data(w).meetings[0];
+  const earlier = structuredClone(source);
+  earlier.id = "earlier";
+  earlier.time = "08:00";
+  earlier.series = "Weekly team";
+  earlier.items[0].notes = "Morning minutes";
+  source.time = "10:00";
+  w.meetingDesk.replace({ version: 1, meetings: [source, earlier], templates: [] });
+  click(w, '.app-nav [data-tab="history"]');
+  click(w, '[data-open-workspace="' + source.id + '"]');
+  click(w, '[data-tab="setup"]');
+  input(w, '[data-key="series"]', "Weekly team");
+  assert.match(w.document.getElementById("previous-minutes-text").textContent, /Morning minutes/);
+  input(w, '[data-key="time"]', "07:00");
+  assert.equal(w.document.getElementById("previous-minutes-select"), null);
+  assert.match(w.document.getElementById("previous-minutes-panel").textContent, /No earlier/);
+  input(w, '[data-key="series"]', "");
+  assert.match(w.document.getElementById("previous-minutes-panel").textContent, /Add a series/);
   w.close();
 });
