@@ -103,3 +103,9 @@ Templates can be created or edited directly. Starting from a template creates fr
 Open a meeting → Meeting setup → **Schedule follow-up**. Pick the next date and title. The new meeting preserves the agenda, preparation, presenters, time, location, and roster, with fresh IDs, empty discussion/outcomes, unrecorded attendance, and an active status. The source meeting remains unchanged.
 
 Optionally include unfinished actions as a preparation-only review topic. These reminders capture the source title/date, action, owner, and due date when created. They do not stay synchronized or create duplicate commitments: update the original actions through Action items. Preparation reminders are excluded from printed and downloaded minutes. This flow uses the existing local/account save and backup format; no database migration is needed.
+
+## Action follow-through
+
+In **Action items**, use **Edit** to update a commitment, its owner, due date, or completion status without leaving the list. Save updates the original meeting record; Cancel discards edits. Filters remain in place, so an edited action may disappear when it no longer matches. Account changes close the editor.
+
+Search covers action text, meeting, topic, and owner. **Export filtered CSV** downloads the current matching actions in due-date order, including source meeting/topic and completion status. Notes, preparation, and attendance are excluded. Values are quoted and formula-like text is prefixed for spreadsheet safety.
