@@ -3,10 +3,11 @@
 let editingTemplate = false;
 let followUpId = null;
 let editingActionId = null;
+let selectedSeries = "";
 const originalView = renderCurrentView,
   originalAgenda = renderAgenda;
 const originalReplace = window.meetingDesk.replace;
-const globalViews = ["dashboard", "history", "actions", "templates"];
+const globalViews = ["dashboard", "history", "series", "actions", "templates"];
 const allActions = () =>
   state.meetings.flatMap((m) =>
     m.items.flatMap((t) => t.records.filter((r) => r.type === "Action").map((r) => ({ m, t, r }))),
@@ -47,7 +48,7 @@ renderCurrentView = function () {
   getElement("overview-content").hidden = !global;
   getElement("meeting-shell").hidden = global;
   getElement("view-label").textContent =
-    { dashboard: "Overview", history: "Meetings", actions: "Action items", templates: "Templates" }[
+    { dashboard: "Overview", history: "Meetings", series: "Meeting series", actions: "Action items", templates: "Templates" }[
       activeTab
     ] || (editingTemplate ? "Template editor" : "Meeting workspace");
   document.querySelectorAll(".app-nav button").forEach((b) => {
@@ -63,6 +64,7 @@ renderCurrentView = function () {
     if (activeTab === "dashboard") return dashboard();
     if (activeTab === "history") return meetingLibrary();
     if (activeTab === "actions") return actionLibrary();
+    if (activeTab === "series") return seriesLibrary();
     return templateLibrary();
   }
   originalView();
@@ -77,6 +79,7 @@ renderCurrentView = function () {
 };
 window.meetingDesk.replace = (backup) => {
   followUpId = null;
+  selectedSeries = "";
   editingActionId = null;
   getElement("previous-minutes-panel").replaceChildren();
   getElement("action-edit-dialog").close();
@@ -158,6 +161,59 @@ function dashboard() {
       : empty("All caught up", "Actions captured in meetings appear here.")
   }</section></div><section class="surface mt-4"><div class="section-title"><h2>Recent meeting notes</h2><button data-tab="templates" class="btn btn-sm btn-link">Browse templates →</button></div>${table(recent.slice(0, 5))}</section>`;
 }
+const seriesKey = (name) => (name || "").trim().toLowerCase();
+function seriesGroups() {
+  const groups = new Map();
+  for (const meeting of state.meetings) {
+    const key = seriesKey(meeting.series);
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, { key, name: meeting.series.trim(), meetings: [] });
+    groups.get(key).meetings.push(meeting);
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+function seriesLibrary() {
+  const groups = seriesGroups();
+  if (!groups.some((g) => g.key === selectedSeries)) selectedSeries = "";
+  getElement("overview-content").innerHTML = heading("MEETING SERIES", "Keep the conversation moving.",
+    "Browse a recurring meeting’s history and unfinished commitments.") +
+    `<section class="surface"><label class="form-label w-100">Meeting series
+    <select id="series-picker" class="form-select"><option value="">All series</option>${groups.map(g =>
+      `<option value="${escapeHtml(g.key)}" ${g.key === selectedSeries ? "selected" : ""}>${escapeHtml(g.name)}</option>`).join("")}</select></label>
+    <div id="series-results"></div></section>`;
+  renderSeriesResults();
+}
+function renderSeriesResults() {
+  const groups = seriesGroups();
+  const group = groups.find(g => g.key === selectedSeries);
+  const container = getElement("series-results");
+  if (!group) {
+    container.innerHTML = groups.length ? `<div class="template-grid">${groups.map(g => {
+      const open = g.meetings.reduce((n, m) => n + openCount(m), 0);
+      return `<article class="surface"><h2>${escapeHtml(g.name)}</h2><p>${g.meetings.length} meetings · ${open} open actions</p><button class="btn btn-outline-primary" data-open-series="${escapeHtml(g.key)}">View series</button></article>`;
+    }).join("")}</div>` : empty("Start a meeting series", "Open a meeting and enter a series name in Meeting details. Follow-up meetings join the same series automatically.");
+    return;
+  }
+  const sorted = [...group.meetings].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+  const ids = new Set(sorted.map(m => m.id));
+  const actions = allActions().filter(a => ids.has(a.m.id) && !a.r.done)
+    .sort((a, b) => (a.r.due || "9999").localeCompare(b.r.due || "9999"));
+  const overdue = actions.filter(a => a.r.due && a.r.due < getToday()).length;
+  const source = sorted.find(m => m.date && m.date <= getToday()) || sorted[0];
+  container.innerHTML = `<div class="section-title"><div><h2>${escapeHtml(group.name)}</h2>
+    <p>${sorted.length} meetings · ${actions.length} open actions · ${overdue} overdue</p></div>
+    <button class="btn btn-primary" data-series-follow-up="${source.id}">Schedule follow-up</button></div>
+    <p class="small text-body-secondary">Follow-up agenda source: ${escapeHtml(source.title)} · ${escapeHtml(source.date || "Undated")}. Archived meetings and their open actions are included below.</p>
+    <h3>Open actions</h3>${actions.length ? `<div class="table-responsive"><table class="table desk-table"><thead><tr><th>Action / source</th><th>Owner</th><th>Due</th></tr></thead><tbody>${actions.map(a =>
+      `<tr><td><button class="table-title" data-jump-action="${a.r.id}">${escapeHtml(a.r.text || "Untitled action")}</button><small>${escapeHtml(a.m.title)} · ${escapeHtml(a.m.date)}</small></td><td>${escapeHtml(a.r.owner || "Unassigned")}</td><td>${escapeHtml(a.r.due || "Not set")}</td></tr>`).join("")}</tbody></table></div>` : empty("All caught up", "No unfinished actions in this series.")}
+    <h3 class="mt-4">Meeting history</h3>${table(sorted)}`;
+}
+document.addEventListener("change", (event) => {
+  if (event.target.id === "series-picker") {
+    selectedSeries = event.target.value;
+    renderSeriesResults();
+  }
+});
 function meetingLibrary() {
   getElement("overview-content").innerHTML =
     heading(
@@ -423,6 +479,18 @@ document.addEventListener(
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+    if (d.openSeries) {
+      stop();
+      selectedSeries = d.openSeries;
+      getElement("series-picker").value = selectedSeries;
+      renderSeriesResults();
+      return;
+    }
+    if (d.seriesFollowUp) {
+      stop();
+      openNewMeeting("", d.seriesFollowUp);
+      return;
+    }
     if (d.editAction) {
       stop();
       openActionEditor(d.editAction);

@@ -115,3 +115,9 @@ Search covers action text, meeting, topic, and owner. **Export filtered CSV** do
 Use **Meeting details → Meeting series** to group existing meetings by name (case-insensitive). In the meeting workspace, expand **Previous minutes** to read the latest earlier meeting and select older minutes without leaving current notes. Archived meetings are included; preparation notes are excluded. Earlier meetings are determined by date and start time, so both should be set correctly. Meetings at the same date/time are not treated as earlier.
 
 Schedule follow-up automatically gives the source and new meeting the same series. Starting from a template likewise retains its series, creating a unique series name when needed. This updates the source's series metadata only; discussion, attendance and actions remain unchanged. Review is read-only and reflects the saved meeting records, not an immutable approved snapshot. Prior minutes are not copied into the current meeting's exports. Series names are preserved in the existing backup and account save format; no database migration is needed. Previously created follow-ups can be grouped manually through Meeting details.
+
+## Series overview
+
+The **Series** sidebar page groups named meeting series (ignoring case and surrounding spaces). Choose a series to see meeting history, open commitments, and overdue counts. Archived meetings and their unfinished actions remain included. Open a meeting's minutes or jump to an action's original topic directly. The selection stays while navigating within the workspace and resets when accounts change.
+
+**Schedule follow-up** uses the latest dated meeting on or before today as its agenda source; when none exists, it uses the latest meeting in the series. The selected source is displayed before you start. Standalone meetings remain in Meetings and are not silently grouped by title.

@@ -344,3 +344,56 @@ test("existing meetings can join a series and same-day review respects start tim
   assert.match(w.document.getElementById("previous-minutes-panel").textContent, /Add a series/);
   w.close();
 });
+
+test("series hub groups names, includes archived commitments, and opens source minutes", () => {
+  const w = app();
+  const source = data(w).meetings[0];
+  const make = (id, series, archived, done) => ({
+    ...structuredClone(source), id, title: id, date: "2020-01-01", series, archived,
+    items: [{ ...source.items[0], id: id + "-topic", notes: id + " minutes", records: [
+      { id: id + "-action", type: "Action", text: id + " action", owner: "Jesse", due: "2020-01-02", done }
+    ] }]
+  });
+  w.meetingDesk.replace({ version: 1, templates: [], meetings: [
+    make("archived", "IT <team>", true, false),
+    make("recent", "it <TEAM>", false, true),
+    make("other", "Finance", false, false),
+    make("standalone", "", false, false)
+  ] });
+  click(w, '.app-nav [data-tab="series"]');
+  assert.equal(w.document.querySelectorAll("[data-open-series]").length, 2);
+  click(w, '[data-open-series="it <team>"]');
+  const results = w.document.getElementById("series-results");
+  assert.match(results.textContent, /2 meetings · 1 open actions · 1 overdue/);
+  assert.equal(results.querySelectorAll("[data-open-workspace]").length, 2);
+  assert.equal(results.querySelectorAll("[data-jump-action]").length, 1);
+  assert.equal(results.querySelector("team"), null);
+  click(w, '[data-open-minutes="archived"]');
+  assert.match(w.document.getElementById("minutesbody").textContent, /archived minutes/);
+  click(w, '.app-nav [data-tab="series"]');
+  assert.equal(w.document.getElementById("series-picker").value, "it <team>");
+  click(w, '[data-jump-action="archived-action"]');
+  assert.equal(w.document.querySelector('[data-rkey="text"]').value, "archived action");
+  w.meetingDesk.replace({ version: 1, meetings: [], templates: [] });
+  click(w, '.app-nav [data-tab="series"]');
+  assert.match(w.document.getElementById("series-results").textContent, /Start a meeting series/);
+  assert.equal(w.document.getElementById("series-picker").value, "");
+  w.close();
+});
+test("series follow-up selects latest dated past agenda and keeps the chosen series", () => {
+  const w = app();
+  const source = data(w).meetings[0];
+  const make = (id, date) => ({ ...structuredClone(source), id, title: id, date, series: "Weekly",
+    items: [{ ...source.items[0], id: id + "-topic", title: id + " agenda" }] });
+  w.meetingDesk.replace({ version: 1, templates: [], meetings: [
+    make("older", "2020-01-01"), make("latest", "2020-02-01"), make("future", "2099-01-01")
+  ] });
+  click(w, '.app-nav [data-tab="series"]');
+  click(w, '[data-open-series]');
+  click(w, '[data-series-follow-up]');
+  assert.equal(w.document.getElementById("new-title").value, "latest");
+  submit(w);
+  assert.equal(data(w).meetings[0].series, "Weekly");
+  assert.equal(data(w).meetings[0].items[0].title, "latest agenda");
+  w.close();
+});
