@@ -34,6 +34,7 @@ const createAgendaItem = (title = "New agenda item") => ({
 const createMeeting = () => ({
   id: createId(),
   title: "Untitled meeting",
+  series: "",
   archived: false,
   date: getToday(),
   time: "09:00",
@@ -92,6 +93,7 @@ function validateBackup(backup, preserveIds = false) {
       id: restoreId(meeting.id),
       archived: meeting.archived === true,
       title: readText(meeting.title) || "Untitled meeting",
+      series: readText(meeting.series).trim().slice(0, 200),
       date: readText(meeting.date),
       time: readText(meeting.time),
       location: readText(meeting.location),
@@ -344,6 +346,11 @@ function renderMeetingSetup() {
   ${renderInput("Meeting title", "title", meeting.title, "text", "meeting")}
   <div class="row g-3">${renderInput("Date", "date", meeting.date, "date", "meeting")}${renderInput("Time", "time", meeting.time, "time", "meeting")}</div>
   ${renderInput("Location / meeting link", "location", meeting.location, "text", "meeting")}
+  <label class="form-label w-100">Meeting series
+    <input class="form-control" data-scope="meeting" data-key="series" maxlength="200" list="meeting-series-list" value="${escapeHtml(meeting.series || "")}" placeholder="For example, Weekly IT team">
+    <datalist id="meeting-series-list">${[...new Set(state.meetings.concat(state.templates).map(m => m.series).filter(Boolean))].sort().map(name => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist>
+    <small class="text-body-secondary">Use the same series name to review earlier meetings together. Leave blank for a standalone meeting.</small>
+  </label>
   <p class="text-body-secondary">Manage the roster and mark who attended in the Attendance tab.</p>
   <div class="d-flex flex-wrap gap-2 mt-4">
     <button id="save-template" class="btn btn-outline-secondary">Save as template</button>
@@ -572,8 +579,7 @@ function renderOutcomeRecords() {
 </div>`;
 }
 // Produce minutes in agenda order. Preparation is intentionally excluded.
-function buildMinutesText() {
-  let meeting = getCurrentMeeting();
+function buildMinutesText(meeting = getCurrentMeeting()) {
   let lines = [
     meeting.title || "Untitled meeting",
     [meeting.date, meeting.time, meeting.location].filter(Boolean).join(" · "),

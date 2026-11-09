@@ -66,6 +66,7 @@ renderCurrentView = function () {
     return templateLibrary();
   }
   originalView();
+  renderPreviousMinutes();
   getElement("template-banner").hidden = editingTemplate === false;
   getElement("meetingpick").hidden = editingTemplate;
   getElement("newmeeting").hidden = editingTemplate;
@@ -77,6 +78,7 @@ renderCurrentView = function () {
 window.meetingDesk.replace = (backup) => {
   followUpId = null;
   editingActionId = null;
+  getElement("previous-minutes-panel").replaceChildren();
   getElement("action-edit-dialog").close();
   getElement("new-meeting-dialog").close();
   editingTemplate = false;
@@ -84,6 +86,44 @@ window.meetingDesk.replace = (backup) => {
   activeTab = "dashboard";
   renderCurrentView();
 };
+function earlierSeriesMeetings(meeting) {
+  const series = (meeting.series || "").trim().toLocaleLowerCase();
+  if (!series || !meeting.date) return [];
+  const stamp = (m) => `${m.date}T${m.time || "00:00"}`;
+  return state.meetings.filter((m) => m.id !== meeting.id
+    && (m.series || "").trim().toLocaleLowerCase() === series
+    && m.date && stamp(m) < stamp(meeting))
+    .sort((a, b) => stamp(b).localeCompare(stamp(a)) || a.id.localeCompare(b.id));
+}
+function renderPreviousMinutes() {
+  const panel = getElement("previous-minutes-panel");
+  if (editingTemplate) { panel.replaceChildren(); return; }
+  const meeting = getCurrentMeeting();
+  const sameMeeting = panel.dataset.meeting === meeting.id;
+  const wasOpen = sameMeeting && panel.querySelector("details")?.open;
+  const previousSelection = sameMeeting ? getElement("previous-minutes-select")?.value : null;
+  panel.dataset.meeting = meeting.id;
+  const earlier = earlierSeriesMeetings(meeting);
+  const selected = earlier.find((m) => m.id === previousSelection) || earlier[0];
+  panel.innerHTML = `<details class="border rounded-3 p-3" ${wasOpen ? "open" : ""}>
+    <summary class="fw-semibold">Previous minutes${selected ? " · " + escapeHtml(selected.date) : ""}</summary>
+    ${selected ? `<p class="small text-body-secondary mt-2">Review earlier minutes from ${escapeHtml(meeting.series)}. Current notes stay below. Preparation notes are excluded.</p>
+      <label class="form-label w-100">Earlier meeting
+        <select id="previous-minutes-select" class="form-select">${earlier.map((m) => `<option value="${m.id}" ${m.id === selected.id ? "selected" : ""}>${escapeHtml(m.date)} ${escapeHtml(m.time)} · ${escapeHtml(m.title)}${m.archived ? " (archived)" : ""}</option>`).join("")}</select>
+      </label>
+      <pre id="previous-minutes-text" class="minutes" style="max-height: 24rem; overflow: auto" tabindex="0" aria-label="Previous meeting minutes"></pre>`
+      : `<p class="small mt-2 mb-0">${meeting.series ? "No earlier dated meetings in this series yet. Check the dates and times in Meeting details." : "Add a series name in Meeting details to connect existing meetings, or use Schedule follow-up."}</p>`}
+    </details>`;
+  if (selected) getElement("previous-minutes-text").textContent = buildMinutesText(selected);
+}
+document.addEventListener("change", (event) => {
+  if (event.target.id !== "previous-minutes-select") return;
+  const meeting = earlierSeriesMeetings(getCurrentMeeting()).find((m) => m.id === event.target.value);
+  if (meeting) {
+    getElement("previous-minutes-text").textContent = buildMinutesText(meeting);
+    getElement("previous-minutes-panel").querySelector("summary").textContent = "Previous minutes · " + meeting.date;
+  }
+});
 function table(meetings) {
   return meetings.length
     ? `<div class="table-responsive"><table class="table align-middle desk-table"><thead><tr><th>Meeting</th><th>Date</th><th>Status</th><th>Open actions</th><th><span class="visually-hidden">Review</span></th></tr></thead><tbody>${meetings.map((m) => `<tr><td><button class="table-title" data-open-workspace="${m.id}">${escapeHtml(m.title || "Untitled meeting")}</button><small>${escapeHtml(m.location || "Location not set")}</small></td><td>${escapeHtml(m.date || "No date")}</td><td><span class="status-pill">${statusLabel(m)}</span></td><td>${openCount(m)}</td><td><button class="btn btn-sm btn-outline-secondary" data-open-minutes="${m.id}">Minutes</button></td></tr>`).join("")}</tbody></table></div>`
@@ -328,6 +368,18 @@ ${reminders.join("\n")}`.slice(0, 200000);
       m.items.unshift(review);
     }
   }
+  if (t) {
+    // Follow-ups and meetings created from one template belong to its series.
+    if (!t.series?.trim()) {
+      const base = (t.title || "Meeting series").trim().slice(0, 180);
+      const used = new Set(state.meetings.concat(state.templates).map(m => (m.series || "").trim().toLowerCase()));
+      let name = base, suffix = 2;
+      while (used.has(name.toLowerCase())) name = `${base} (${suffix++})`;
+      t.series = name;
+    }
+    t.series = t.series.trim().slice(0, 200);
+    m.series = t.series;
+  }
   m.title = getElement("new-title").value.trim() || "Untitled meeting";
   m.date = getElement("new-date").value;
   state.meetings.unshift(m);
@@ -345,6 +397,7 @@ getElement("mobile-topic").onchange = (e) => {
   renderCurrentView();
 };
 document.addEventListener("input", (e) => {
+  if (e.target.dataset.scope === "meeting" && ["series", "date", "time"].includes(e.target.dataset.key)) renderPreviousMinutes();
   if (["meeting-search", "meeting-filter"].includes(e.target.id)) filterMeetings();
   if (["action-search", "action-owner", "action-status", "action-due"].includes(e.target.id))
     filterActions();
