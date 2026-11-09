@@ -226,6 +226,29 @@
         <button type="submit" class="btn btn-primary w-100 mt-3">Create meeting</button>
       </form>
     </dialog>
+    <dialog id="action-edit-dialog" aria-labelledby="action-edit-title">
+      <form id="action-edit-form">
+        <h2 id="action-edit-title">Edit action item</h2>
+        <p id="action-edit-source" class="text-body-secondary"></p>
+        <label class="form-label w-100">Action
+          <textarea id="action-edit-text" class="form-control" required maxlength="200000" rows="3"></textarea>
+        </label>
+        <label class="form-label w-100">Owner
+          <input id="action-edit-owner" class="form-control" maxlength="200000" list="action-owner-suggestions">
+          <datalist id="action-owner-suggestions"></datalist>
+        </label>
+        <label class="form-label w-100">Due date
+          <input id="action-edit-due" class="form-control" type="date">
+        </label>
+        <label class="form-label w-100">
+          <input id="action-edit-done" type="checkbox" class="form-check-input"> Completed
+        </label>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save action</button>
+          <button type="button" id="action-edit-cancel" class="btn btn-outline-secondary">Cancel</button>
+        </div>
+      </form>
+    </dialog>
     <div id="printout"></div>
     <script src="assets/js/meeting-desk.js" defer></script>
     <script src="assets/js/workspace.js" defer></script>

@@ -204,3 +204,76 @@ test("follow-up cancellation, optional reminders, and account changes do not lea
   assert.equal(w.document.getElementById("new-meeting-dialog").open, false);
   w.close();
 });
+
+function actionWorkspace() {
+  const w = app();
+  const meeting = data(w).meetings[0];
+  meeting.items[0].records = [
+    { id: "edit-open", type: "Action", text: "Review budget", owner: "Jesse", due: "2026-11-12", done: false },
+    { id: "edit-done", type: "Action", text: "Finished", owner: "Jesse", due: "", done: true }
+  ];
+  w.meetingDesk.replace({ version: 1, meetings: [meeting], templates: [] });
+  click(w, '.app-nav [data-tab="actions"]');
+  return w;
+}
+test("action editor saves the original record, preserves filters, and supports cancel", () => {
+  const w = actionWorkspace();
+  input(w, "#action-owner", "Jesse");
+  click(w, "[data-edit-action]");
+  input(w, "#action-edit-text", "Should not save");
+  click(w, "#action-edit-cancel");
+  assert.equal(data(w).meetings[0].items[0].records[0].text, "Review budget");
+  click(w, "[data-edit-action]");
+  input(w, "#action-edit-text", "Revised budget");
+  input(w, "#action-edit-owner", "Dana");
+  input(w, "#action-edit-due", "2026-12-01");
+  w.document.getElementById("action-edit-form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  const record = data(w).meetings[0].items[0].records[0];
+  assert.equal(record.id, "edit-open");
+  assert.equal(record.text, "Revised budget");
+  assert.equal(record.owner, "Dana");
+  assert.equal(record.due, "2026-12-01");
+  assert.equal(w.document.getElementById("action-owner").value, "Jesse");
+  assert.match(w.document.getElementById("action-results").textContent, /No matching actions/);
+  input(w, "#action-owner", "Dana");
+  assert.equal(w.document.querySelectorAll("[data-edit-action]").length, 1);
+  assert.equal(JSON.parse(w.localStorage.getItem("dudgeon.meetingdesk.v1")).meetings[0].items[0].records[0].owner, "Dana");
+  click(w, "[data-edit-action]");
+  click(w, "#action-edit-done");
+  w.document.getElementById("action-edit-form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  assert.equal(data(w).meetings[0].items[0].records[0].done, true);
+  assert.equal(w.document.getElementById("export-actions").disabled, true);
+  w.close();
+});
+test("action editing rejects blank descriptions and stale account dialogs", () => {
+  const w = actionWorkspace();
+  click(w, "[data-edit-action]");
+  input(w, "#action-edit-text", "   ");
+  w.document.getElementById("action-edit-form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  assert.equal(data(w).meetings[0].items[0].records[0].text, "Review budget");
+  w.meetingDesk.replace({ version: 1, meetings: [], templates: [] });
+  assert.equal(w.document.getElementById("action-edit-dialog").open, false);
+  w.document.getElementById("action-edit-form").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  assert.equal(data(w).meetings[0].items.length, 0);
+  w.close();
+});
+test("CSV exports only matching actions, quotes values, and neutralizes spreadsheet formulas", () => {
+  const w = actionWorkspace();
+  const backup = data(w);
+  backup.meetings[0].items[0].records[0].text = '=HYPERLINK("bad")\nNext, line';
+  backup.meetings[0].items[0].prep = "PRIVATE PREP";
+  backup.meetings[0].items[0].notes = "PRIVATE NOTES";
+  w.meetingDesk.replace(backup);
+  click(w, '.app-nav [data-tab="actions"]');
+  input(w, "#action-search", "Jesse");
+  w.eval('downloadFile = (text, name, type) => { window.exportedActions = { text, name, type }; };');
+  click(w, "#export-actions");
+  const csv = w.exportedActions.text;
+  assert.match(csv, /"Action","Owner","Due date"/);
+  assert.match(csv, /"'=HYPERLINK\(""bad""\)/);
+  assert.match(csv, /Next, line/);
+  assert.doesNotMatch(csv, /Finished|PRIVATE PREP|PRIVATE NOTES/);
+  input(w, "#action-search", "no matches");
+  assert.equal(w.document.getElementById("export-actions").disabled, true);
+  w.close();
+});

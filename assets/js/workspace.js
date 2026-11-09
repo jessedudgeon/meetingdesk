@@ -2,6 +2,7 @@
 "use strict";
 let editingTemplate = false;
 let followUpId = null;
+let editingActionId = null;
 const originalView = renderCurrentView,
   originalAgenda = renderAgenda;
 const originalReplace = window.meetingDesk.replace;
@@ -75,6 +76,8 @@ renderCurrentView = function () {
 };
 window.meetingDesk.replace = (backup) => {
   followUpId = null;
+  editingActionId = null;
+  getElement("action-edit-dialog").close();
   getElement("new-meeting-dialog").close();
   editingTemplate = false;
   originalReplace(backup);
@@ -158,18 +161,18 @@ function actionLibrary() {
       "FOLLOW THROUGH",
       "Turn decisions into progress.",
       "Track commitments across every meeting, including archived meetings.",
-      "",
+      '<button id="export-actions" class="btn btn-outline-primary">Export filtered CSV</button>',
     ) +
-    `<section class="surface"><div class="filter-row"><label>Search<input id="action-search" class="form-control" type="search" placeholder="Action or meeting…"></label><label>Owner<select id="action-owner" class="form-select"><option value="">Everyone</option><option value="__unassigned">Unassigned</option>${owners.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("")}</select></label><label>Status<select id="action-status" class="form-select"><option value="open">Open</option><option value="all">All</option><option value="done">Completed</option><option value="overdue">Overdue</option></select></label><label>Due by<input id="action-due" class="form-control" type="date"></label></div><div id="action-results"></div></section>`;
+    `<section class="surface"><div class="filter-row"><label>Search<input id="action-search" class="form-control" type="search" placeholder="Action, meeting, topic, or owner…"></label><label>Owner<select id="action-owner" class="form-select"><option value="">Everyone</option><option value="__unassigned">Unassigned</option>${owners.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("")}</select></label><label>Status<select id="action-status" class="form-select"><option value="open">Open</option><option value="all">All</option><option value="done">Completed</option><option value="overdue">Overdue</option></select></label><label>Due by<input id="action-due" class="form-control" type="date"></label></div><div id="action-results"></div></section>`;
   filterActions();
 }
-function filterActions() {
+function filteredActions() {
   const q = getElement("action-search").value.toLowerCase(),
     owner = getElement("action-owner").value,
     status = getElement("action-status").value,
     due = getElement("action-due").value;
-  const actions = allActions()
-    .filter((a) => `${a.r.text} ${a.m.title}`.toLowerCase().includes(q))
+  return allActions()
+    .filter((a) => `${a.r.text} ${a.m.title} ${a.t.title} ${a.r.owner}`.toLowerCase().includes(q))
     .filter((a) => !owner || (owner === "__unassigned" ? !a.r.owner : a.r.owner === owner))
     .filter(
       (a) =>
@@ -182,9 +185,66 @@ function filterActions() {
     )
     .filter((a) => !due || (a.r.due && a.r.due <= due))
     .sort((a, b) => (a.r.due || "9999").localeCompare(b.r.due || "9999"));
-  getElement("action-results").innerHTML = actions.length
-    ? `<div class="table-responsive"><table class="table align-middle desk-table"><thead><tr><th>Done</th><th>Action / source</th><th>Owner</th><th>Due</th></tr></thead><tbody>${actions.map((a) => `<tr><td><input type="checkbox" class="form-check-input" data-complete-action="${a.r.id}" aria-label="Complete ${escapeHtml(a.r.text)}" ${a.r.done ? "checked" : ""}></td><td><strong>${escapeHtml(a.r.text || "Untitled action")}</strong><button class="source-link" data-jump-action="${a.r.id}">${escapeHtml(a.m.title)} / ${escapeHtml(a.t.title)}</button></td><td>${escapeHtml(a.r.owner || "Unassigned")}</td><td class="${!a.r.done && a.r.due && a.r.due < getToday() ? "text-danger" : ""}">${escapeHtml(a.r.due || "Not set")}</td></tr>`).join("")}</tbody></table></div>`
-    : empty("No matching actions", "Change the filters or add an action from a meeting topic.");
+}
+function filterActions() {
+  const actions = filteredActions();
+  getElement("export-actions").disabled = actions.length === 0;
+  getElement("action-results").innerHTML = `<p class="small text-body-secondary" role="status">${actions.length} matching action${actions.length === 1 ? "" : "s"}</p>` + (actions.length
+    ? `<div class="table-responsive"><table class="table align-middle desk-table"><thead><tr><th>Done</th><th>Action / source</th><th>Owner</th><th>Due</th><th>Edit</th></tr></thead><tbody>${actions.map((a) => `<tr><td><input type="checkbox" class="form-check-input" data-complete-action="${a.r.id}" aria-label="Complete ${escapeHtml(a.r.text)}" ${a.r.done ? "checked" : ""}></td><td><strong>${escapeHtml(a.r.text || "Untitled action")}</strong><button class="source-link" data-jump-action="${a.r.id}">${escapeHtml(a.m.title)} / ${escapeHtml(a.t.title)}</button></td><td>${escapeHtml(a.r.owner || "Unassigned")}</td><td class="${!a.r.done && a.r.due && a.r.due < getToday() ? "text-danger" : ""}">${escapeHtml(a.r.due || "Not set")}</td><td><button class="btn btn-sm btn-outline-secondary" data-edit-action="${a.r.id}" aria-label="Edit ${escapeHtml(a.r.text)}">Edit</button></td></tr>`).join("")}</tbody></table></div>`
+    : empty("No matching actions", "Change the filters or add an action from a meeting topic."));
+}
+function openActionEditor(id) {
+  if (document.querySelector("main").inert) return;
+  const action = allActions().find((a) => a.r.id === id);
+  if (!action) return;
+  editingActionId = id;
+  getElement("action-edit-source").textContent = `${action.m.title} / ${action.t.title}`;
+  getElement("action-edit-text").value = action.r.text;
+  getElement("action-edit-owner").value = action.r.owner;
+  getElement("action-edit-due").value = action.r.due;
+  getElement("action-edit-done").checked = action.r.done;
+  getElement("action-owner-suggestions").innerHTML = [...new Set(allActions().map((a) => a.r.owner).filter(Boolean))]
+    .sort().map((owner) => `<option value="${escapeHtml(owner)}"></option>`).join("");
+  getElement("action-edit-dialog").showModal();
+}
+getElement("action-edit-cancel").onclick = () => getElement("action-edit-dialog").close();
+getElement("action-edit-dialog").addEventListener("close", () => { editingActionId = null; });
+getElement("action-edit-form").onsubmit = (event) => {
+  event.preventDefault();
+  if (document.querySelector("main").inert) return;
+  const action = allActions().find((a) => a.r.id === editingActionId);
+  const text = getElement("action-edit-text").value.trim();
+  if (!action || !text) {
+    showNotice(action ? "Enter an action description." : "This action is no longer available.");
+    return;
+  }
+  Object.assign(action.r, {
+    text,
+    owner: getElement("action-edit-owner").value.trim(),
+    due: getElement("action-edit-due").value,
+    done: getElement("action-edit-done").checked,
+  });
+  saveMeetings();
+  getElement("action-edit-dialog").close();
+  // Preserve the user's filters, including an owner that now has no matches.
+  const owner = action.r.owner;
+  if (owner && ![...getElement("action-owner").options].some((option) => option.value === owner)) {
+    getElement("action-owner").add(new Option(owner, owner));
+  }
+  filterActions();
+};
+function exportFilteredActions() {
+  const actions = filteredActions();
+  if (!actions.length) return;
+  const cell = (value) => {
+    let text = String(value ?? "");
+    if (/^[\s]*[=+@-]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  };
+  const rows = [["Action", "Owner", "Due date", "Status", "Meeting", "Meeting date", "Topic"],
+    ...actions.map((a) => [a.r.text, a.r.owner, a.r.due, a.r.done ? "Completed" : "Open", a.m.title, a.m.date, a.t.title])];
+  downloadFile("\uFEFF" + rows.map((row) => row.map(cell).join(",")).join("\r\n"),
+    `meeting-actions-${getToday()}.csv`, "text/csv;charset=utf-8");
 }
 function templateLibrary() {
   getElement("overview-content").innerHTML =
@@ -310,6 +370,16 @@ document.addEventListener(
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+    if (d.editAction) {
+      stop();
+      openActionEditor(d.editAction);
+      return;
+    }
+    if (b.id === "export-actions") {
+      stop();
+      exportFilteredActions();
+      return;
+    }
     if (b.id === "follow-up") {
       stop();
       if (!editingTemplate) openNewMeeting("", state.selected);
