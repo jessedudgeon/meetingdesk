@@ -345,9 +345,10 @@ function renderMeetingSetup() {
   <div class="row g-3">${renderInput("Date", "date", meeting.date, "date", "meeting")}${renderInput("Time", "time", meeting.time, "time", "meeting")}</div>
   ${renderInput("Location / meeting link", "location", meeting.location, "text", "meeting")}
   <p class="text-body-secondary">Manage the roster and mark who attended in the Attendance tab.</p>
-  <div class="d-flex justify-content-between gap-2 mt-4">
+  <div class="d-flex flex-wrap gap-2 mt-4">
     <button id="save-template" class="btn btn-outline-secondary">Save as template</button>
     <button id="archive-meeting" class="btn btn-outline-secondary">${meeting.archived ? "Restore meeting" : "Archive meeting"}</button>
+    <button id="follow-up" class="btn btn-primary">Schedule follow-up</button>
     <button id="duplicate" class="btn btn-outline-secondary">Duplicate meeting</button>
     <button id="deletemeeting" class="btn btn-outline-danger">Delete meeting</button>
   </div>

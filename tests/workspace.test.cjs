@@ -138,3 +138,69 @@ test("account replacement refreshes dashboard and clears template context", () =
   assert.equal(w.document.getElementById("template-banner").hidden, true);
   w.close();
 });
+test("follow-up starts fresh, keeps original commitments and excludes preparation from minutes", () => {
+  const w = app();
+  const source = data(w).meetings[0];
+  source.archived = true;
+  source.items[0].notes = "Old discussion";
+  source.items[0].prep = "Private preparation";
+  source.items[0].status = "Complete";
+  source.attendance = [{ id: "person-one", name: "Jesse", role: "IT", status: "Present", notes: "Old attendance" }];
+  source.items[0].records = [
+    { id: "open-action", type: "Action", text: "<b>Review budget</b>", owner: "Jesse", due: "2026-11-12", done: false },
+    { id: "done-action", type: "Action", text: "Already finished", done: true },
+    { id: "decision-one", type: "Decision", text: "Old decision" }
+  ];
+  w.meetingDesk.replace({ version: 1, meetings: [source], templates: [] });
+  const original = data(w).meetings[0];
+  click(w, ' .app-nav [data-tab="history"]');
+  click(w, "[data-open-workspace]");
+  click(w, '[data-tab="setup"]');
+  click(w, "#follow-up");
+  assert.equal(w.document.getElementById("new-title").value, original.title);
+  click(w, "#review-open-actions");
+  input(w, "#new-date", "2026-11-16");
+  submit(w);
+  const next = data(w).meetings[0];
+  assert.deepEqual(data(w).meetings[1], original);
+  assert.notEqual(next.id, original.id);
+  assert.equal(next.date, "2026-11-16");
+  assert.equal(next.archived, false);
+  assert.equal(next.attendance[0].status, "Not recorded");
+  assert.equal(next.attendance[0].notes, "");
+  assert.notEqual(next.attendance[0].id, original.attendance[0].id);
+  assert.equal(next.items[1].prep, "Private preparation");
+  assert.equal(next.items[1].notes, "");
+  assert.equal(next.items[1].status, "Upcoming");
+  assert.ok(next.items.every(i => i.records.length === 0));
+  assert.match(next.items[0].prep, /Review budget/);
+  assert.match(next.items[0].prep, /Jesse; due 2026-11-12/);
+  assert.doesNotMatch(next.items[0].prep, /Already finished|Old decision/);
+  assert.equal(w.document.querySelector("#content b"), null);
+  click(w, '[data-tab="minutes"]');
+  click(w, "#print");
+  assert.doesNotMatch(w.document.getElementById("printout").textContent, /Review budget|Private preparation|Old discussion/);
+  click(w, '.app-nav [data-tab="actions"]');
+  assert.equal(w.document.querySelectorAll("[data-complete-action]").length, 1);
+  w.close();
+});
+test("follow-up cancellation, optional reminders, and account changes do not leak dialog state", () => {
+  const w = app();
+  click(w, "[data-open-workspace]");
+  click(w, '[data-tab="setup"]');
+  click(w, "#follow-up");
+  click(w, "#cancel-new");
+  assert.equal(data(w).meetings.length, 1);
+  click(w, "#follow-up");
+  submit(w);
+  assert.equal(data(w).meetings[0].items.length, data(w).meetings[1].items.length);
+  click(w, "#newmeeting");
+  assert.equal(w.document.getElementById("new-template").disabled, false);
+  assert.equal(w.document.getElementById("follow-up-options").hidden, true);
+  click(w, "#cancel-new");
+  click(w, '[data-tab="setup"]');
+  click(w, "#follow-up");
+  w.meetingDesk.replace({ version: 1, meetings: [], templates: [] });
+  assert.equal(w.document.getElementById("new-meeting-dialog").open, false);
+  w.close();
+});

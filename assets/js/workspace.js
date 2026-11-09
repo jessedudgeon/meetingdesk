@@ -1,6 +1,7 @@
 // Views share the original model, validators, and account save pipeline.
 "use strict";
 let editingTemplate = false;
+let followUpId = null;
 const originalView = renderCurrentView,
   originalAgenda = renderAgenda;
 const originalReplace = window.meetingDesk.replace;
@@ -68,11 +69,13 @@ renderCurrentView = function () {
   getElement("meetingpick").hidden = editingTemplate;
   getElement("newmeeting").hidden = editingTemplate;
   document.querySelector('[data-tab="minutes"]').hidden = editingTemplate;
-  for (const id of ["duplicate", "deletemeeting", "archive-meeting", "save-template"])
+  for (const id of ["follow-up", "duplicate", "deletemeeting", "archive-meeting", "save-template"])
     if (getElement(id)) getElement(id).hidden = editingTemplate;
   getElement("agenda-panel").classList.toggle("secondary-agenda", activeTab !== "workspace");
 };
 window.meetingDesk.replace = (backup) => {
+  followUpId = null;
+  getElement("new-meeting-dialog").close();
   editingTemplate = false;
   originalReplace(backup);
   activeTab = "dashboard";
@@ -211,17 +214,25 @@ renderAttendance = function () {
     `<section><div class="section-title"><div><h2>${editingTemplate ? "Template roster" : "Attendance"}</h2><p class="small text-body-secondary">${editingTemplate ? "These people will be added to each new meeting." : "Mark attendance quickly and add notes only where needed."}</p></div><div class="d-flex gap-2">${editingTemplate ? "" : '<button id="mark-present" class="btn btn-outline-secondary">Mark all present</button>'}<button id="add-attendee" class="btn btn-primary">+ Add person</button></div></div><p id="attendance-summary" class="small text-body-secondary" role="status"></p><div class="table-responsive"><table class="table align-middle attendance-table"><thead><tr><th>Name</th><th>Role / department</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>${m.attendance.map((p, i) => `<tr data-attendee="${p.id}"><td><input class="form-control" aria-label="Person ${i + 1} name" data-attendance-key="name" value="${escapeHtml(p.name)}"></td><td><input class="form-control" aria-label="Person ${i + 1} role" data-attendance-key="role" value="${escapeHtml(p.role)}"></td><td><select class="form-select" aria-label="Person ${i + 1} status" data-attendance-key="status">${ATTENDANCE_STATUSES.map((s) => `<option ${s === p.status ? "selected" : ""}>${s}</option>`).join("")}</select></td><td><input class="form-control" aria-label="Person ${i + 1} notes" data-attendance-key="notes" value="${escapeHtml(p.notes)}"></td><td><button class="btn btn-sm btn-outline-danger" data-remove-attendee="${p.id}" aria-label="Remove person ${i + 1}">×</button></td></tr>`).join("")}</tbody></table></div>${m.attendance.length ? "" : empty("Who’s joining?", "Add people to start your roster.")}</section>`;
   renderAttendanceSummary();
 };
-function openNewMeeting(id = "") {
+function openNewMeeting(id = "", sourceId = null) {
+  followUpId = sourceId;
+  getElement("new-template").disabled = Boolean(sourceId);
+  getElement("follow-up-options").hidden = !sourceId;
+  getElement("review-open-actions").checked = false;
   getElement("new-template").innerHTML =
     '<option value="">Blank meeting</option>' +
     state.templates.map((t) => `<option value="${t.id}">${escapeHtml(t.title)}</option>`).join("");
+  if (sourceId) {
+    const source = state.meetings.find((m) => m.id === sourceId);
+    getElement("new-template").innerHTML = `<option value="">Follow-up: ${escapeHtml(source?.title || "Meeting")}</option>`;
+  }
   getElement("new-template").value = id;
   getElement("new-date").value = getToday();
   previewTemplate();
   getElement("new-meeting-dialog").showModal();
 }
 function previewTemplate() {
-  const t = state.templates.find((t) => t.id === getElement("new-template").value);
+  const t = followUpId ? state.meetings.find((m) => m.id === followUpId) : state.templates.find((t) => t.id === getElement("new-template").value);
   getElement("new-title").value = t?.title || "Team meeting";
   getElement("template-preview").innerHTML = t
     ? `<strong>Agenda preview</strong><ol>${t.items.map((i) => `<li>${escapeHtml(i.title)} <small>· ${i.minutes} min</small></li>`).join("")}</ol><small>${t.attendance.length} people. Notes and attendance start fresh.</small>`
@@ -231,8 +242,32 @@ getElement("new-template").onchange = previewTemplate;
 getElement("cancel-new").onclick = () => getElement("new-meeting-dialog").close();
 getElement("new-meeting-form").onsubmit = (event) => {
   event.preventDefault();
-  const t = state.templates.find((t) => t.id === getElement("new-template").value),
-    m = t ? resetForNextMeeting(t) : createMeeting();
+  const t = followUpId ? state.meetings.find((m) => m.id === followUpId) : state.templates.find((t) => t.id === getElement("new-template").value);
+  if (followUpId && !t) {
+    showNotice("The source meeting is no longer available. Close this dialog and try again.");
+    return;
+  }
+  if (state.meetings.length >= 500) {
+    showNotice("The workspace supports 500 meetings. Export a backup before removing old meetings.");
+    return;
+  }
+  const m = t ? resetForNextMeeting(t) : createMeeting();
+  if (followUpId && getElement("review-open-actions").checked) {
+    const reminders = t.items.flatMap((item) => item.records
+      .filter((r) => r.type === "Action" && !r.done)
+      .map((r) => `• ${r.text || "Untitled action"} — ${r.owner || "Unassigned"}; due ${r.due || "not set"} (Topic: ${item.title})`));
+    if (reminders.length) {
+      if (m.items.length >= 1000 || reminders.join("\n").length > 190000) {
+        showNotice("This meeting is too large for an action review topic. Uncheck reminders to continue.");
+        return;
+      }
+      const review = createAgendaItem("Review previous action items");
+      review.prep = `Open actions from "${t.title}" (${t.date || "undated"}), captured when this meeting was created. Update the originals in Action items.
+
+${reminders.join("\n")}`.slice(0, 200000);
+      m.items.unshift(review);
+    }
+  }
   m.title = getElement("new-title").value.trim() || "Untitled meeting";
   m.date = getElement("new-date").value;
   state.meetings.unshift(m);
@@ -275,6 +310,11 @@ document.addEventListener(
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+    if (b.id === "follow-up") {
+      stop();
+      if (!editingTemplate) openNewMeeting("", state.selected);
+      return;
+    }
     if (b.id === "newmeeting" || "newMeeting" in d || d.startTemplate) {
       stop();
       openNewMeeting(d.startTemplate || "");

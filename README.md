@@ -97,3 +97,9 @@ Action items collects actions from every meeting, including archived meetings. F
 Templates can be created or edited directly. Starting from a template creates fresh IDs, a new date, empty discussion/outcomes, and unrecorded attendance. Existing meetings remain independent. Print / PDF produces structured minutes with attendance and outcomes; preparation remains excluded.
 
 `assets/js/workspace.js` contains the dashboard and navigation views, using the existing data and storage pipeline. No database migration is required. Tests cover the new flows alongside legacy backups and cloud-save behavior.
+
+## Follow-up meetings
+
+Open a meeting → Meeting setup → **Schedule follow-up**. Pick the next date and title. The new meeting preserves the agenda, preparation, presenters, time, location, and roster, with fresh IDs, empty discussion/outcomes, unrecorded attendance, and an active status. The source meeting remains unchanged.
+
+Optionally include unfinished actions as a preparation-only review topic. These reminders capture the source title/date, action, owner, and due date when created. They do not stay synchronized or create duplicate commitments: update the original actions through Action items. Preparation reminders are excluded from printed and downloaded minutes. This flow uses the existing local/account save and backup format; no database migration is needed.
