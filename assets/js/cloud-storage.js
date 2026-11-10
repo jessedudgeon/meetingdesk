@@ -15,6 +15,38 @@ const cloud = window.meetingCloud = { active: false, save(data) {
   clearTimeout(timer);
   if (!blocked) timer = setTimeout(flush, 700);
 } };
+// Reuse this origin’s signed-in client; never copy tokens between sites.
+async function questCall(operation) {
+  if(!user || blocked || !cloud.active) throw Error('Sign in and finish loading your account first.');
+  const expected=generation;
+  const result=await operation();
+  if(expected!==generation) throw Error('Account changed. Reopen the action.');
+  if(result.error) throw result.error;
+  return result.data;
+}
+cloud.questDestinations = async () => {
+  const expected=generation, rows=[];
+  for(let start=0;;start+=500){
+    const page=await questCall(()=>client.rpc('qb_quick_destinations').order('kind').order('id').range(start,start+499));
+    if(expected!==generation)throw Error("Account changed. Reopen the action.");
+    rows.push(...page);if(page.length<500)return rows;
+  }
+};
+cloud.questCreate = async args => {
+  const expected=generation;
+  await flush();
+  if(expected!==generation || pending || saving || blocked) throw Error('Save your Minutes changes before creating a task. Use Account → Retry saving.');
+  return questCall(()=>client.rpc('qb_create_quick_task',args));
+};
+cloud.questStatus = async id => {
+  const expected=generation;
+  const task=await questCall(()=>client.from('qb_tasks').select('id,title,status,xp_reward,project_id').eq('id',id).maybeSingle());
+  if(!task)return null;
+  const project=await questCall(()=>client.from('qb_projects').select('org_id').eq('id',task.project_id).single());
+  const xp=await questCall(()=>client.from('qb_xp_events').select('amount').eq('task_id',id));
+  if(expected!==generation)throw Error("Account changed. Reopen the action.");
+  return {...task,org_id:project.org_id,awarded:xp.reduce((total,row)=>total+row.amount,0)};
+};
 function lockWorkspace(locked) {
   document.querySelector("main").inert = locked;
   element("import").disabled = locked;

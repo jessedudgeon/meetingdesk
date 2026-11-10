@@ -128,6 +128,8 @@ function validateBackup(backup, preserveIds = false) {
               owner: readText(record.owner),
               due: readText(record.due),
               done: record.done === true,
+              ...(preserveIds && /^[0-9a-f-]{36}$/i.test(record.questRequest || '') ? {questRequest: record.questRequest} : {}),
+              ...(preserveIds && /^[0-9a-f-]{36}$/i.test(record.questTask || '') ? {questTask: record.questTask} : {}),
               outcome: ["Pending", "Carried", "Not carried", "Withdrawn"].includes(record.outcome)
                 ? record.outcome
                 : "Pending",
@@ -536,7 +538,7 @@ function renderOutcomeRecords() {
   </div>
   ${
     record.type === "Action"
-      ? `<div class="row g-3">
+      ? `<div class="mt-2"><button class="btn btn-sm btn-outline-primary" data-quest-action="${record.id}">${record.questTask ? 'Task status & XP' : 'Create QuestBoard task'}</button></div><div class="row g-3">
   <label class="form-label w-100">
     Owner
     <input
