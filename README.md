@@ -125,3 +125,23 @@ The **Series** sidebar page groups named meeting series (ignoring case and surro
 ## Calendar
 
 Use **Calendar** for a monthly view of meeting dates and unfinished action deadlines. Select a day to open its meetings/actions or create a meeting on that date. Navigate with previous/next, Today, or the month field; filter by series and event type. Archived meetings are optional, while their unfinished action deadlines remain visible. Completed actions and invalid/undated dates are excluded. Dates use the browser's local calendar without UTC conversion. Filters and month selection remain while navigating, then reset on account changes. This is a date-based planning view, not an external calendar sync or invitation sender.
+
+## QuestBoard action tasks and experience
+
+Sign into Minutes with the same account used in QuestBoard. Each action has a
+**Create QuestBoard task** button in its meeting and in Action items. Choose a project
+or **No project · Department** and an XP reward. The latter uses a shared department
+queue. The action text, meeting/topic names, typed owner and deadline are copied only
+after confirmation in the dialog; choose a real assignee on the created task.
+
+The linked action then offers **Task status & XP**, displaying current authorized
+QuestBoard status and awarded XP. Approval in QuestBoard awards XP once under its
+existing review rules. Checking an action complete in Minutes does not complete or
+approve the task. Text/deadline changes are not automatically synchronized. Close and
+reopen the dialog to refresh status. Access requires existing QuestBoard creation
+permissions. Drafts and guest workspaces cannot send tasks without signing in.
+
+The request identity is saved before creation so network retries do not duplicate
+work. Account reloads preserve links; copies and imports remove links so copied
+meetings cannot accidentally refer to the original task. Requires QuestBoard’s
+`20261110131119_quick_tasks_minutes.sql` migration in the shared Supabase project.
